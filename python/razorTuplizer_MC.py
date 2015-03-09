@@ -51,6 +51,26 @@ process.load("SUSYBSMAnalysis.RunOneRazorTuplizer.vertexFiltering_cff")
 #For MET Filters
 process.load("SUSYBSMAnalysis.RunOneRazorTuplizer.MetOptionalFilters_cff")
 
+#For Pileup Jet ID
+from CMGTools.External.pujetidsequence_cff import puJetId
+from CMGTools.External.pujetidsequence_cff import puJetMva
+
+process.recoPuJetId = puJetId.clone(
+   jets = cms.InputTag("ak5PFJets"),
+   applyJec = cms.bool(True),
+   inputIsCorrected = cms.bool(False),                
+)
+
+process.recoPuJetMva = puJetMva.clone(
+   jets = cms.InputTag("ak5PFJets"),
+   jetids = cms.InputTag("recoPuJetId"),
+   produceJetIds = cms.bool(True),
+   applyJec = cms.bool(True),
+   inputIsCorrected = cms.bool(False),                
+)
+
+
+
 #------ Analyzer ------#
 
 #list input collections
@@ -58,9 +78,7 @@ process.ntuples = cms.EDAnalyzer('RazorTuplizer',
     useGen = cms.bool(True),
     enableTriggerInfo = cms.bool(True),                                 
     triggerPathNamesFile = cms.string("SUSYBSMAnalysis/RunOneRazorTuplizer/data/RunOneRazorHLTPathnames.dat"),
-
-    vertices = cms.string("offlinePrimaryVertices"),
-    
+    vertices = cms.string("offlinePrimaryVertices"),    
     muons = cms.string("muons"),
     electrons = cms.string("gsfElectrons"),
     #taus = cms.string("slimmedTaus"),
@@ -70,47 +88,20 @@ process.ntuples = cms.EDAnalyzer('RazorTuplizer',
     genMets = cms.string("genMetTrue"),
     mets = cms.string("pfMet"),
     pfCands = cms.string("particleFlow"),
-
     genParticles = cms.string("genParticles"),
     genJets = cms.string("ak5GenJets"),
-
     triggerBits = cms.string("TriggerResults"),
-    #triggerPrescales = cms.string("patTrigger"),
-    #triggerObjects = cms.string("selectedPatTrigger"),
-    #metFilterBits = cms.string("TriggerResults", "", "PAT"),
-
     lheInfo = cms.string("externalLHEProducer"),
     genInfo = cms.string("generator"),
     puInfo = cms.string("addPileupInfo"), #uncomment if no pre-mixing
-    #puInfo = cms.string("mixData", "", "HLT"), #uncomment for samples with pre-mixed pileup
-    #hcalNoiseInfo = cms.string("hcalnoise", "", "RECO"),
-
-    #secondaryVertices = cms.string("slimmedSecondaryVertices", "", "PAT"),
-
-    #rhoAll = cms.string("kt6PFJets", "rho"),
-    #rhoFastjetAll = cms.string("fixedGridRhoFastjetAll", "", "RECO"),
-    #rhoFastjetAllCalo = cms.string("fixedGridRhoFastjetAllCalo", "", "RECO"),
-    #rhoFastjetCentralCalo = cms.string("fixedGridRhoFastjetCentralCalo", "", "RECO"),
-    #rhoFastjetCentralChargedPileUp = cms.string("kt6PFJetsCentralChargedPileUp", "rho"),
-    #rhoFastjetCentralNeutral = cms.string("kt6PFJetsCentralNeutral", "rho"),
-
     beamSpot = cms.string("offlineBeamSpot"),
-
     ebRecHits = cms.string("reducedEcalRecHitsEB"),
     eeRecHits = cms.string("reducedEcalRecHitsEE"),
-    #esRecHits = cms.string("reducedEgamma", "reducedESRecHits", "PAT"),
-    #ebeeClusters = cms.string("reducedEgamma", "reducedEBEEClusters", "PAT"),
-    #esClusters = cms.string("reducedEgamma", "reducedESClusters", "PAT"),
     conversions = cms.string("allConversions"),
     csvBJetTags = cms.string("newCombinedSecondaryVertexBJetTags"),              
     cisvBJetTags = cms.string("myCombinedInclusiveSecondaryVertexBJetTags"),
     jetFlavorMatch = cms.string("myAK5PFJetFlavourAssociation"),
-   #singleLegConversions = cms.string("reducedEgamma", "reducedSingleLegConversions", "PAT"),
-    #gedGsfElectronCores = cms.string("reducedEgamma", "reducedGedGsfElectronCores", "PAT"),
-    #gedPhotonCores = cms.string("reducedEgamma", "reducedGedPhotonCores", "PAT"),
-    #superClusters = cms.string("reducedEgamma", "reducedSuperClusters", "PAT"),
 
-    #lostTracks = cms.string("lostTracks", "", "PAT")
 )
 
 #run
@@ -118,4 +109,7 @@ process.p = cms.Path( process.goodPrimaryVertices*
                       process.metOptionalFilterSequence*
                       process.myJetFlavourId*
                       process.newJetBtagging*
+                      process.recoPuJetId*
+                      process.recoPuJetMva*
                       process.ntuples)
+

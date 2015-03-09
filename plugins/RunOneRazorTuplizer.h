@@ -99,7 +99,7 @@ public:
   virtual bool fillTaus();//Fills Tau 4-momentum only. PT > 20GeV
   virtual bool fillIsoPFCandidates();//Fills Isolated PF Candidates, PT > 5 GeV
   virtual bool fillPhotons(const edm::Event& iEvent, const edm::EventSetup& iSetup);//Fills photon 4-momentum only. PT > 20GeV && ISO < 0.3
-  virtual bool fillJets();//Fills AK5 Jet 4-momentum, CSV, and CISV. PT > 20GeV 
+  virtual bool fillJets(const edm::Event& iEvent );//Fills AK5 Jet 4-momentum, CSV, and CISV. PT > 20GeV 
   virtual bool fillJetsAK8();//Fills AK8 Jet 4-momentum.
   virtual bool fillMet(const edm::Event& iEvent);//Fills MET(mag, phi)
   virtual bool fillRazor();//Fills MR and RSQ
@@ -411,6 +411,9 @@ protected:
   float jetJetArea[99];
   float jetPileupE[99];  
   float jetPileupId[99];
+  int   jetPileupIdFlag[99];
+  bool  jetPassIDLoose[99];
+  bool  jetPassIDTight[99];
   int   jetPartonFlavor[99];
   int   jetHadronFlavor[99];
 

@@ -9,7 +9,8 @@
 #include "DataFormats/MuonReco/interface/MuonSelectors.h"
 #include "RunOneRazorTuplizer.h"
 #include "DataFormats/METReco/interface/BeamHaloSummary.h"
-
+#include <PhysicsTools/SelectorUtils/interface/JetIDSelectionFunctor.h>
+#include <PhysicsTools/SelectorUtils/interface/PFJetIDSelectionFunctor.h>
 
 //------ Constructors and destructor ------//
 RazorTuplizer::RazorTuplizer(const edm::ParameterSet& iConfig): 
@@ -282,6 +283,9 @@ void RazorTuplizer::enableJetBranches(){
   RazorEvents->Branch("jetJetArea", jetJetArea, "jetJetArea[nJets]/F");
   RazorEvents->Branch("jetPileupE", jetPileupE, "jetPileupE[nJets]/F");
   RazorEvents->Branch("jetPileupId", jetPileupId, "jetPileupId[nJets]/F");
+  RazorEvents->Branch("jetPileupIdFlag", jetPileupIdFlag, "jetPileupIdFlag[nJets]/I");
+  RazorEvents->Branch("jetPassIDLoose", jetPassIDLoose, "jetPassIDLoose[nJets]/O");
+  RazorEvents->Branch("jetPassIDTight", jetPassIDTight, "jetPassIDTight[nJets]/O");
   RazorEvents->Branch("jetPartonFlavor", jetPartonFlavor, "jetPartonFlavor[nJets]/I");
   RazorEvents->Branch("jetHadronFlavor", jetHadronFlavor, "jetHadronFlavor[nJets]/I");
 }
@@ -1036,7 +1040,19 @@ bool RazorTuplizer::fillPhotons(const edm::Event& iEvent, const edm::EventSetup&
   return true;
 };
 
-bool RazorTuplizer::fillJets(){
+bool RazorTuplizer::fillJets(const edm::Event& iEvent){
+
+  edm::Handle<edm::ValueMap<float> > puJetIdMVA;
+  iEvent.getByLabel(edm::InputTag("recoPuJetMva","full53xDiscriminant"),puJetIdMVA);
+  edm::Handle<edm::ValueMap<int> > puJetIdFlag;
+  iEvent.getByLabel(edm::InputTag("recoPuJetMva","full53xId"),puJetIdFlag);
+
+  edm::Handle<reco::JetIDValueMap> hJetIDMap;
+  iEvent.getByLabel( "ak5JetID", hJetIDMap );
+  PFJetIDSelectionFunctor jetIDLoose(PFJetIDSelectionFunctor::FIRSTDATA, PFJetIDSelectionFunctor::LOOSE);
+  PFJetIDSelectionFunctor jetIDTight(PFJetIDSelectionFunctor::FIRSTDATA, PFJetIDSelectionFunctor::TIGHT);
+  pat::strbitset ret_loose = jetIDLoose.getBitTemplate(); 
+  pat::strbitset ret_tight = jetIDTight.getBitTemplate(); 
 
   const reco::PFJetCollection inJets = *(jets.product());  
 
@@ -1057,7 +1073,13 @@ bool RazorTuplizer::fillJets(){
     jetMass[nJets] = j->mass();
     jetJetArea[nJets] = j->jetArea();
     jetPileupE[nJets] = j->pileup();
-    //jetPileupId[nJets] = j->userFloat("pileupJetId:fullDiscriminant");
+    jetPileupId[nJets] =  (*puJetIdMVA)[jetBaseRef];
+    jetPileupIdFlag[nJets] = (*puJetIdFlag)[jetBaseRef];
+
+    ret_loose.set(false);
+    ret_tight.set(false);
+    jetPassIDLoose[nJets] = jetIDLoose(*j, ret_loose);
+    jetPassIDTight[nJets] = jetIDTight(*j, ret_loose);        
 
     if (useGen_) {
       jetPartonFlavor[nJets] = (*jetFlavorMatch)[edm::RefToBase<reco::Jet>(jetRef)].getFlavour();
@@ -1332,7 +1354,7 @@ void RazorTuplizer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSe
     //   && fillTaus()
     && fillIsoPFCandidates()
     && fillPhotons(iEvent,iSetup)
-    && fillJets()
+    && fillJets(iEvent)
     && fillJetsAK8()
     && fillMet(iEvent)
     ;
