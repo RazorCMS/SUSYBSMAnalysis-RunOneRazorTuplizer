@@ -111,10 +111,11 @@ const reco::Candidate* RazorTuplizer::findOriginalMotherWithSameID(const reco::C
   // Is there another parent with the same ID? If yes, go deeper into recursion
   if (particle->numberOfMothers() > 0 && particle->pdgId() != 0) {
     if (particle->mother(0)->numberOfMothers() == 0 || 
+	particle->mother(0)->status() == 11 ||  // prevent infinite loop for sherpa documentation gluons
 	(particle->mother(0)->numberOfMothers() > 0 && particle->mother(0)->mother(0)->pdgId() != particle->mother(0)->pdgId())
 	) {
       return particle->mother(0);
-    } else {
+    } else {      
       return findOriginalMotherWithSameID(particle->mother(0));
     }
   }

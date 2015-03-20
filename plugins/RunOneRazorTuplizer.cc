@@ -1226,21 +1226,28 @@ bool RazorTuplizer::fillGenParticles(){
 
   //Fills selected gen particles
   for(size_t i=0; i<genParticles->size();i++){
+    if ((*genParticles)[i].status() == 11) continue; //skip sherpa documentation lines
+
     if(   (abs((*genParticles)[i].pdgId()) >= 1 && abs((*genParticles)[i].pdgId()) <= 6 )
-       || (abs((*genParticles)[i].pdgId()) >= 11 && abs((*genParticles)[i].pdgId()) <= 16)
-       || (abs((*genParticles)[i].pdgId()) == 21 && (*genParticles)[i].status() != 2 )	   
-       || (abs((*genParticles)[i].pdgId()) >= 23 && abs((*genParticles)[i].pdgId()) <= 25
-	   )
-       || (abs((*genParticles)[i].pdgId()) == 22 && 
-	   findFirstMotherWithDifferentID(&(*genParticles)[i]) && abs(findFirstMotherWithDifferentID(&(*genParticles)[i])->pdgId()) <= 25
-	   )
-       || (abs((*genParticles)[i].pdgId()) >= 32 && abs((*genParticles)[i].pdgId()) <= 42)
-       || (abs((*genParticles)[i].pdgId()) >= 1000001 && abs((*genParticles)[i].pdgId()) <= 1000039)
-       ){
+	  || (abs((*genParticles)[i].pdgId()) >= 11 && abs((*genParticles)[i].pdgId()) <= 16)
+	  || (abs((*genParticles)[i].pdgId()) == 21 && (*genParticles)[i].status() != 2 )	   
+	  || (abs((*genParticles)[i].pdgId()) >= 23 && abs((*genParticles)[i].pdgId()) <= 25
+	      )
+	  || (abs((*genParticles)[i].pdgId()) == 22 && 
+	      findFirstMotherWithDifferentID(&(*genParticles)[i]) && abs(findFirstMotherWithDifferentID(&(*genParticles)[i])->pdgId()) <= 25
+	      )
+	  || (abs((*genParticles)[i].pdgId()) >= 32 && abs((*genParticles)[i].pdgId()) <= 42)
+	  || (abs((*genParticles)[i].pdgId()) >= 1000001 && abs((*genParticles)[i].pdgId()) <= 1000039)
+	  ){
       prunedV.push_back(&(*genParticles)[i]);
     }
-    
-    //   cout << i << " : " << (*genParticles)[i].pdgId() << " " << (*genParticles)[i].status() << " " << (*genParticles)[i].pt() << " ";
+
+    // cout << i << " : " << (*genParticles)[i].pdgId() << " " << (*genParticles)[i].status() << " " 
+    // 	 << (*genParticles)[i].pt() << " "  << (*genParticles)[i].eta() << " "  << (*genParticles)[i].phi() << " : " 
+    // 	 << (*genParticles)[i].numberOfMothers() << " ";
+    // if ((*genParticles)[i].numberOfMothers() > 0 ) cout << (*genParticles)[i].mother(0)->pdgId() << " ";
+    // cout << "\n";
+
     //if (prunedV.size()<99) prunedV.push_back(&(*genParticles)[i]); //keep all pruned particles
   }
 
@@ -1262,16 +1269,16 @@ bool RazorTuplizer::fillGenParticles(){
       //find the ID of the first mother that has a different ID than the particle itself
       const reco::Candidate* firstMotherWithDifferentID = findFirstMotherWithDifferentID(prunedV[i]);
       if (firstMotherWithDifferentID) {
-	gParticleMotherId[i] = firstMotherWithDifferentID->pdgId();
+      	gParticleMotherId[i] = firstMotherWithDifferentID->pdgId();
       }
-
+      
       //find the mother and keep going up the mother chain if the ID's are the same
       const reco::Candidate* originalMotherWithSameID = findOriginalMotherWithSameID(prunedV[i]);
       for(unsigned int j = 0; j < prunedV.size(); j++){	
-	if(prunedV[j] == originalMotherWithSameID){
-	  gParticleMotherIndex[i] = j;
-	  break;
-	}
+      	if(prunedV[j] == originalMotherWithSameID){
+      	  gParticleMotherIndex[i] = j;
+      	  break;
+      	}
       }
     } else {
       gParticleMotherIndex[i] = -1;
