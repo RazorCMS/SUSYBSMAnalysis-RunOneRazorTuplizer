@@ -952,7 +952,7 @@ bool RazorTuplizer::fillPhotons(const edm::Event& iEvent, const edm::EventSetup&
     phoPt[nPhotons] = pho.pt();
     phoEta[nPhotons] = pho.eta();
     phoPhi[nPhotons] = pho.phi();
-    phoSigmaIetaIeta[nPhotons] = pho.sigmaEtaEta();
+    phoSigmaIetaIeta[nPhotons] = pho.sigmaIetaIeta();
     phoR9[nPhotons] = pho.r9();
 
     pho_HoverE[nPhotons] = pho.hadTowOverEm();
