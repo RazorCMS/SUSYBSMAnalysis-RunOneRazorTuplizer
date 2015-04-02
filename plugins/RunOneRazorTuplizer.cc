@@ -79,6 +79,7 @@ RazorTuplizer::RazorTuplizer(const edm::ParameterSet& iConfig):
 			   myNonTrigWeights);
 
 
+
   //Read in HLT Trigger Path List from config file
   for (int i = 0; i<NTriggersMAX; ++i) triggerPathNames[i] = "";
   ifstream myfile (edm::FileInPath(triggerPathNamesFile_.c_str()).fullPath().c_str()) ;
@@ -944,9 +945,12 @@ bool RazorTuplizer::fillIsoPFCandidates(){
 }
 
 bool RazorTuplizer::fillPhotons(const edm::Event& iEvent, const edm::EventSetup& iSetup){
-    
+
+  //set up photon regression correction
+  photonEnergyCorrector.Initialize(iSetup,edm::FileInPath("SUSYBSMAnalysis/RunOneRazorTuplizer/data/gbrv3ph_52x.root").fullPath().c_str());
+
   for (const reco::Photon &pho : *photons) {
-    if (pho.pt() < 20) continue;
+    //if (pho.pt() < 20) continue;
 
     phoE[nPhotons] = pho.energy();
     phoPt[nPhotons] = pho.pt();
@@ -1020,9 +1024,10 @@ bool RazorTuplizer::fillPhotons(const edm::Event& iEvent, const edm::EventSetup&
     pho_sumNeutralHadronEt[nPhotons] = tmpNeutralHadronPt;
     pho_sumPhotonEt[nPhotons] = tmpPhotonPt;
     
+    std::pair<double,double> photonEnergyCorrections = photonEnergyCorrector.CorrectedEnergyWithErrorV3(pho, *vertices, *rhoAll, *ecalLazyTools, iSetup, false);
+    pho_RegressionE[nPhotons] = photonEnergyCorrections.first;
+    pho_RegressionEUncertainty[nPhotons] = photonEnergyCorrections.second;
 
-    pho_RegressionE[nPhotons] = pho.getCorrectedEnergy(reco::Photon::P4type::regression1);
-    pho_RegressionEUncertainty[nPhotons] = pho.getCorrectedEnergyError(reco::Photon::P4type::regression1);
     pho_IDMVA[nPhotons] = pho.pfMVA();
     pho_superClusterEta[nPhotons] = pho.superCluster()->eta();
     pho_superClusterPhi[nPhotons] = pho.superCluster()->phi();
