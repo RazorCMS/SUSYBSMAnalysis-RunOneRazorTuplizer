@@ -25,15 +25,15 @@ process.TFileService = cms.Service("TFileService",
 
 #load run conditions
 process.load('Configuration.StandardSequences.FrontierConditions_GlobalTag_cff')
-process.load('Configuration.Geometry.GeometryIdeal_cff')
+process.load("Configuration.StandardSequences.GeometryRecoDB_cff")
 process.load('Configuration.StandardSequences.MagneticField_38T_cff')
 
 #------ Declare the correct global tag ------#
 
 #For Data
-#process.GlobalTag.globaltag = 'FT_53_V6_AN1::All'
+#process.GlobalTag.globaltag = 'FT53_V21A_AN6::All'
 #For MC
-process.GlobalTag.globaltag = 'START53_V10::All'
+process.GlobalTag.globaltag = 'START53_V27::All'
 
 
 #For Transient Track Builder
