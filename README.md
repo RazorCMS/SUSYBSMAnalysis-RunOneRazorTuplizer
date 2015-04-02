@@ -10,6 +10,7 @@ Instructions for compiling in CMSSW
     cd CMSSW_5_3_26/src
     cmsenv
     git clone git@github.com:RazorCMS/SUSYBSMAnalysis-RunOneRazorTuplizer SUSYBSMAnalysis/RunOneRazorTuplizer
+    git clone https://github.com/RazorCMS/RunOneRazorTuplizer-RecoEgamma-EgammaTools.git RecoEgamma/EgammaTools
     scram b
     
 Running the BASE ntuplizer
