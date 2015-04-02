@@ -57,6 +57,7 @@ using namespace std;
 #include "TrackingTools/TransientTrack/interface/TransientTrackBuilder.h"
 #include "TrackingTools/TransientTrack/plugins/TransientTrackBuilderESProducer.h"
 #include "TrackingTools/IPTools/interface/IPTools.h"
+#include "RecoEgamma/EgammaTools/interface/EGEnergyCorrector.h"
 
 //ROOT includes
 #include "TTree.h"
@@ -145,6 +146,9 @@ protected:
   EGammaMvaEleEstimator* myMVATrig;
   EGammaMvaEleEstimator* myMVANonTrig;
   
+  //Photon energy regression helpers
+  EGEnergyCorrector photonEnergyCorrector;
+
   //----- Member data ------//
 
   // Control Switches
