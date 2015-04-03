@@ -151,6 +151,20 @@ const reco::Candidate* RazorTuplizer::findOriginalMotherWithSameID(const reco::C
   
 // }
 
+bool RazorTuplizer::isGoodPV( const reco::Vertex *v) {
+
+  if(v->isValid() && !v->isFake()
+     && v->ndof() > 4 && fabs(v->z()) <= 24 && v->position().Rho() <= 2
+     ) {
+    return true;
+  } else {
+    return false;
+  }
+
+}
+
+
+
 
 bool RazorTuplizer::isPFNoPU( const reco::PFCandidate candidate,  const reco::Vertex *PV, edm::Handle<reco::VertexCollection> vertices) {
 

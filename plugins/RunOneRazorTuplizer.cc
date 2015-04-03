@@ -612,19 +612,33 @@ bool RazorTuplizer::fillEventInfo(const edm::Event& iEvent){
   lumiNum = iEvent.luminosityBlock();
   eventNum = iEvent.id().event();
   
-  //select the primary vertex, if any
-  if (vertices->empty()) return false; // skip the event if no PV found
-  const reco::Vertex &PV = vertices->front();
-  pvX = PV.x();
-  pvY = PV.y();
-  pvZ= PV.z();
+  bool foundPV = false;
+  myPV = 0;
 
+  pvX = -999;
+  pvY = -999;
+  pvZ = -999;
   nPV = 0;
+
   //Check for good vertices
   for(unsigned int i = 0; i < vertices->size(); i++){
-    if(vertices->at(i).isValid() && !vertices->at(i).isFake())nPV++;
+    if (isGoodPV(&(vertices->at(i)))) {
+      if (!foundPV) { 
+	myPV = &(vertices->at(i));
+	foundPV = true;
+      }
+      nPV++;
+    }
   }
-  if(nPV == 0)return false;
+
+  //save vertex position
+  if (foundPV) {
+    pvX = myPV->x();
+    pvY = myPV->y();
+    pvZ = myPV->z();
+  } else {
+    return false;
+  }
 
   //get rho
   fixedGridRhoAll = *rhoAll;
@@ -647,7 +661,6 @@ bool RazorTuplizer::fillPileUp(){
 
 bool RazorTuplizer::fillMuons(){
   //PV required for Tight working point
-  const reco::Vertex &PV = vertices->front();
   for(const reco::Muon &mu : *muons){
     if(mu.pt() < 5) continue;
     muonE[nMuons] = mu.energy();
@@ -656,9 +669,9 @@ bool RazorTuplizer::fillMuons(){
     muonPhi[nMuons] = mu.phi();
     muonCharge[nMuons] = mu.charge();
     muonIsLoose[nMuons] = muon::isLooseMuon(mu);
-    muonIsTight[nMuons] = muon::isTightMuon(mu,PV);
-    muon_d0[nMuons] = -mu.muonBestTrack()->dxy(PV.position());
-    muon_dZ[nMuons] = mu.muonBestTrack()->dz(PV.position());
+    muonIsTight[nMuons] = muon::isTightMuon(mu,*myPV);
+    muon_d0[nMuons] = -mu.muonBestTrack()->dxy(myPV->position());
+    muon_dZ[nMuons] = mu.muonBestTrack()->dz(myPV->position());
 
     muon_ip3d[nMuons] = 0;
     muon_ip3dSignificance[nMuons] = 0;
@@ -666,7 +679,7 @@ bool RazorTuplizer::fillMuons(){
       const TransientTrackBuilder *transientTrackBuilder = transientTrackBuilderHandle.product();
       const reco::TransientTrack &tt = transientTrackBuilder->build(mu.track());
       const std::pair<bool,Measurement1D> &ip3dpv =  
-	IPTools::signedImpactParameter3D(tt, GlobalVector(mu.track()->px(),mu.track()->py(),mu.track()->pz()),PV);      
+	IPTools::signedImpactParameter3D(tt, GlobalVector(mu.track()->px(),mu.track()->py(),mu.track()->pz()),*myPV);      
       muon_ip3d[nMuons] = ip3dpv.second.value();
       muon_ip3dSignificance[nMuons] = ip3dpv.second.value() / ip3dpv.second.error();
     }
@@ -714,7 +727,6 @@ bool RazorTuplizer::fillMuons(){
 };
 
 bool RazorTuplizer::fillElectrons(){
-  const reco::Vertex &PV = vertices->front();
   for(const reco::GsfElectron &ele : *electrons){
     if(ele.pt() < 5) continue;
     eleE[nElectrons] = ele.energy();
@@ -726,13 +738,12 @@ bool RazorTuplizer::fillElectrons(){
     eleEta_SC[nElectrons] = ele.superCluster()->eta();
     elePhi_SC[nElectrons] = ele.superCluster()->phi();
     eleSigmaIetaIeta[nElectrons] = ele.sigmaIetaIeta();
-    //eleFull5x5SigmaIetaIeta[nElectrons] = ele.full5x5_sigmaIetaIeta();
     eleR9[nElectrons] = ecalLazyTools->e3x3(*(ele.superCluster()->seed())) / ele.superCluster()->rawEnergy();
     ele_dEta[nElectrons] = ele.deltaEtaSuperClusterTrackAtVtx();
     ele_dPhi[nElectrons] = ele.deltaPhiSuperClusterTrackAtVtx();
     ele_HoverE[nElectrons] = ele.hcalOverEcal();
-    ele_d0[nElectrons] = -ele.gsfTrack().get()->dxy(PV.position());
-    ele_dZ[nElectrons] = ele.gsfTrack().get()->dz(PV.position());    
+    ele_d0[nElectrons] = -ele.gsfTrack().get()->dxy(myPV->position());
+    ele_dZ[nElectrons] = ele.gsfTrack().get()->dz(myPV->position());    
    ele_MissHits[nElectrons] = ele.gsfTrack()->trackerExpectedHitsInner().numberOfHits();
 
     //Conversion Veto
@@ -754,8 +765,8 @@ bool RazorTuplizer::fillElectrons(){
     }
 
     //ID MVA
-    ele_IDMVATrig[nElectrons] = myMVATrig->mvaValue(ele, PV, *transientTrackBuilderHandle.product(), *ecalLazyTools, false);
-    ele_IDMVANonTrig[nElectrons] = myMVANonTrig->mvaValue(ele,PV, *transientTrackBuilderHandle.product(), *ecalLazyTools,false);
+    ele_IDMVATrig[nElectrons] = myMVATrig->mvaValue(ele, *myPV, *transientTrackBuilderHandle.product(), *ecalLazyTools, false);
+    ele_IDMVANonTrig[nElectrons] = myMVANonTrig->mvaValue(ele,*myPV, *transientTrackBuilderHandle.product(), *ecalLazyTools,false);
 
 
 
@@ -888,11 +899,10 @@ bool RazorTuplizer::fillTaus(){
 
 bool RazorTuplizer::fillIsoPFCandidates(){
   for (const reco::PFCandidate &candidate : *PFCands) {
-    const reco::Vertex *PV = &vertices->front();
 
     if (candidate.charge() != 0 && candidate.pt() > 5 && 
-	candidate.trackRef().isNonnull() && PV &&
-	PV->trackWeight(candidate.trackRef()) > 0 ) {
+	candidate.trackRef().isNonnull() && myPV &&
+	myPV->trackWeight(candidate.trackRef()) > 0 ) {
 
       //************************************************************
       //compute isolation of the PF candidate
@@ -905,7 +915,7 @@ bool RazorTuplizer::fillIsoPFCandidates(){
   	     && !(candidate.eta() == isoCandidate.eta() && candidate.phi() == isoCandidate.phi())
 	     ) {
 
-	  bool tmpIsPFNoPU = isPFNoPU( isoCandidate, PV, vertices);
+	  bool tmpIsPFNoPU = isPFNoPU( isoCandidate, myPV, vertices);
 
  	  if (tmpIsPFNoPU) {
   	    tmpIsoPFNoPU += isoCandidate.pt();
@@ -926,10 +936,10 @@ bool RazorTuplizer::fillIsoPFCandidates(){
   	isoPFCandidatePhi[nIsoPFCandidates] = candidate.phi();
   	isoPFCandidateIso04[nIsoPFCandidates] = max(0.0, tmpIsoPFNoPU - 0.5*tmpIsoPFPU) ;
 
-	if (PV && candidate.gsfTrackRef().isNonnull()) {
-	  isoPFCandidateD0[nIsoPFCandidates] = candidate.gsfTrackRef()->dxy(PV->position());
-	} else if (PV && candidate.trackRef().isNonnull()) {
-	  isoPFCandidateD0[nIsoPFCandidates] = candidate.trackRef()->dxy(PV->position());
+	if (myPV && candidate.gsfTrackRef().isNonnull()) {
+	  isoPFCandidateD0[nIsoPFCandidates] = candidate.gsfTrackRef()->dxy(myPV->position());
+	} else if (myPV && candidate.trackRef().isNonnull()) {
+	  isoPFCandidateD0[nIsoPFCandidates] = candidate.trackRef()->dxy(myPV->position());
 	} else { 
 	  isoPFCandidateD0[nIsoPFCandidates] = 0.0;
 	}
@@ -967,60 +977,84 @@ bool RazorTuplizer::fillPhotons(const edm::Event& iEvent, const edm::EventSetup&
     //**********************************************************
     //Compute PF isolation
     //**********************************************************
-    double tmpPUPt = 0;
-    double tmpChargedHadronPt = 0;
+    vector<double> tmpChargedHadronPt;
+    for(unsigned int i = 0; i < vertices->size(); i++){
+      if (isGoodPV(&(vertices->at(i)))) {
+	tmpChargedHadronPt.push_back(0);
+      }
+    }
     double tmpPhotonPt = 0;
     double tmpNeutralHadronPt = 0;
  
     // First, find photon direction with respect to the good PV
-    const reco::Vertex &pv = vertices->front();
-    math::XYZVector photon_directionWrtVtx(pho.superCluster()->x() - pv.x(),
-					   pho.superCluster()->y() - pv.y(),
-					   pho.superCluster()->z() - pv.z());
+    TVector3 phoPos(pho.superCluster()->x(),pho.superCluster()->y(),pho.superCluster()->z());
    
     for (const reco::PFCandidate &candidate : *PFCands) {
-
-      //isolation cone is 0.3
-      double tmpDR = deltaR(candidate.eta(), candidate.phi(), photon_directionWrtVtx.Eta(), photon_directionWrtVtx.Phi());
-      if (tmpDR > 0.3) continue;
-      
-      //Determine if particle is PU or not
-      bool tmpIsPFNoPU = isPFNoPU(candidate, &(vertices->front()), vertices);
 
       //don't include PF ele or PF mu
       if (candidate.particleId() == reco::PFCandidate::e || candidate.particleId() == reco::PFCandidate::mu ) {
 	continue;
       }
       
-      if (!tmpIsPFNoPU) {
-	tmpPUPt += candidate.pt();
-      } else {
-	if ( candidate.charge() != 0) {
+      if ( candidate.particleId() == reco::PFCandidate::h ) {
+	
+	for(unsigned int v = 0; v < vertices->size(); v++){
+	  if (!isGoodPV(&(vertices->at(v)))) continue;
+	  
+	  TVector3 vtxPos(vertices->at(v).x(),vertices->at(v).y(),vertices->at(v).z());
+	  TVector3 phoDirFromVtx = (phoPos-vtxPos).Unit();
+	  double tmpDR = 0.0;
+	  tmpDR = deltaR(phoDirFromVtx.Eta(), phoDirFromVtx.Phi(), candidate.eta(), candidate.phi());
+
+	  //dR cone
+	  if ( tmpDR > 0.3 ) continue;
+	 
+	  //dR veto
 	  if ( tmpDR < 0.02 ) continue;	 
-	  tmpChargedHadronPt += candidate.pt();
-	} else if ( candidate.particleId() == reco::PFCandidate::gamma ) {
+	  
+	  //dxy, dz to vertex 
+	  float dz = fabs(candidate.trackRef()->dz(vertices->at(v).position()));
+	  if (dz > 0.2) continue;  //vertex of this cand not compatible with this reco vtx
+	  float dxy = fabs(candidate.trackRef()->dxy(vertices->at(v).position()));
+	  if(fabs(dxy) > 0.1) continue;
+	 
+	  tmpChargedHadronPt[v] += candidate.pt();
+	}
+    
+      } else if ( candidate.particleId() == reco::PFCandidate::gamma ) {
 
-	  //veto PF photons that have the same supercluster as the electron
-	  if (candidate.superClusterRef().isNonnull() && pho.superCluster().isNonnull()) {
-	    if (&(*pho.superCluster()) == &(*candidate.superClusterRef())) {	      
-	      continue;
-	    }	  
-	  }
+	TVector3 candVtx(candidate.vertex().x(),candidate.vertex().y(),candidate.vertex().z());
+	TVector3 phoDirFromCandVtx = phoPos-candVtx;
 
-	  if (fabs(pho.superCluster()->eta()) <= 1.479) {
-	    if ( fabs(photon_directionWrtVtx.Eta() - candidate.eta()) < 0.015) continue;
-	  } else {
-	    if (deltaR(photon_directionWrtVtx.Eta(), photon_directionWrtVtx.Phi(), candidate.eta(), candidate.phi()) 
-		< 0.00864*fabs(sinh(pho.superCluster()->eta()))*4 ) continue;
-	  }
-	  tmpPhotonPt += candidate.pt();
+	//veto PF photons that have the same supercluster as the electron
+	if (candidate.superClusterRef().isNonnull() && pho.superCluster().isNonnull()) {
+	  if (&(*pho.superCluster()) == &(*candidate.superClusterRef())) {	      
+	    continue;
+	  }	  
+	}
+
+	double tmpDR = deltaR(phoDirFromCandVtx.Eta(), phoDirFromCandVtx.Phi(), candidate.eta(), candidate.phi());
+	if (tmpDR > 0.3) continue;
+
+	if (fabs(pho.superCluster()->eta()) <= 1.479) {
+	  if ( fabs(phoDirFromCandVtx.Eta() - candidate.eta()) < 0.015) continue;
 	} else {
-	  tmpNeutralHadronPt += candidate.pt();
-	}	  
-      }	
+	  if (tmpDR < 0.07 
+	      //< 0.00864*fabs(sinh(pho.superCluster()->eta()))*4  // eta dependent veto
+	      ) continue;
+	}
+	tmpPhotonPt += candidate.pt();
+      } else if ( candidate.particleId() == reco::PFCandidate::h0 )  {
+	TVector3 candVtx(candidate.vertex().x(),candidate.vertex().y(),candidate.vertex().z());
+	TVector3 phoDirFromCandVtx = phoPos-candVtx;
+	double tmpDR = deltaR(phoDirFromCandVtx.Eta(), phoDirFromCandVtx.Phi(), candidate.eta(), candidate.phi());
+	if (tmpDR > 0.3) continue;
+	tmpNeutralHadronPt += candidate.pt();
+      }	  
+
     }
- 
-    pho_sumChargedHadronPt[nPhotons] = tmpChargedHadronPt;
+
+    pho_sumChargedHadronPt[nPhotons] = tmpChargedHadronPt[0];
     pho_sumNeutralHadronEt[nPhotons] = tmpNeutralHadronPt;
     pho_sumPhotonEt[nPhotons] = tmpPhotonPt;
     

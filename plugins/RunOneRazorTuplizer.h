@@ -128,6 +128,7 @@ public:
   bool hasMatchedPromptElectron(const reco::SuperClusterRef &sc, const edm::Handle<std::vector<reco::GsfElectron> > &eleCol,
 				const edm::Handle<reco::ConversionCollection> &convCol, const math::XYZPoint &beamspot, 
 				float lxyMin=2.0, float probMin=1e-6, unsigned int nHitsBeforeVtxMax=0);
+  bool isGoodPV( const reco::Vertex *v);
   bool isPFNoPU( const reco::PFCandidate candidate, const reco::Vertex *PV, edm::Handle<reco::VertexCollection> vertices);
   
   double getLeptonPtRel(edm::Handle<reco::PFJetCollection> jets, const reco::Candidate* lepton);
@@ -277,6 +278,7 @@ protected:
   edm::ESHandle<TransientTrackBuilder> transientTrackBuilderHandle;
   EcalClusterLazyTools *ecalLazyTools;
   EcalClusterLocal *ecalLocal;  
+  const reco::Vertex *myPV;
 
   //output tree
   TTree *RazorEvents;
