@@ -262,6 +262,7 @@ void RazorTuplizer::enablePhotonBranches(){
   RazorEvents->Branch("pho_sumChargedHadronPt", pho_sumChargedHadronPt, "pho_sumChargedHadronPt[nPhotons]/F");
   RazorEvents->Branch("pho_sumNeutralHadronEt", pho_sumNeutralHadronEt, "pho_sumNeutralHadronEt[nPhotons]/F");
   RazorEvents->Branch("pho_sumPhotonEt", pho_sumPhotonEt, "pho_sumPhotonEt[nPhotons]/F");
+  RazorEvents->Branch("pho_sumWorstVertexChargedHadronPt", pho_sumWorstVertexChargedHadronPt, "pho_sumWorstVertexChargedHadronPt[nPhotons]/F");
   RazorEvents->Branch("pho_isConversion", pho_isConversion, "pho_isConversion[nPhotons]/O");
   RazorEvents->Branch("pho_passEleVeto", pho_passEleVeto, "pho_passEleVeto[nPhotons]/O");
   RazorEvents->Branch("pho_RegressionE", pho_RegressionE, "pho_RegressionE[nPhotons]/F");
@@ -782,7 +783,7 @@ bool RazorTuplizer::fillElectrons(){
       if (tmpDR > 0.4) continue;
       
       //Determine if particle is PU or not
-      bool tmpIsPFNoPU = isPFNoPU(candidate, &(vertices->front()), vertices);
+      bool tmpIsPFNoPU = isPFNoPU(candidate, myPV, vertices);
 
       //don't include PF ele or PF mu
       if (candidate.particleId() == reco::PFCandidate::e || candidate.particleId() == reco::PFCandidate::mu ) {
@@ -790,25 +791,43 @@ bool RazorTuplizer::fillElectrons(){
       }
       
       if (!tmpIsPFNoPU) {
+
+	//in vecbos, the isolation sequence structure is such that 
+	//the veto below is also applied to pfPU particles.
+	//so we will also apply them.
+	if ( candidate.charge() != 0 &&
+	     fabs(ele.superCluster()->eta()) > 1.479 && tmpDR < 0.015
+	     ) {
+	  continue;
+	}
+
 	tmpPUPt += candidate.pt();
+
       } else {
 	if ( candidate.charge() != 0) {
-	  if (fabs(ele.superCluster()->eta()) > 1.479 && tmpDR < 0.015) continue;	 
+	  if (fabs(ele.superCluster()->eta()) > 1.479 && tmpDR < 0.015) {
+	    continue;	 
+	  }
 	  tmpChargedHadronPt += candidate.pt();
 	} else if ( candidate.particleId() == reco::PFCandidate::gamma ) {
 
 	  //veto PF photons that have the same supercluster as the electron
 	  if (candidate.superClusterRef().isNonnull() && ele.superCluster().isNonnull()) {
-	    if (&(*ele.superCluster()) == &(*candidate.superClusterRef())) {	      
+	    if ( ele.gsfTrack()->trackerExpectedHitsInner().numberOfHits()>0 
+		 && candidate.mva_nothing_gamma() > 0.99 
+		 && &(*ele.superCluster()) == &(*candidate.superClusterRef())
+		 ) {	      
 	      continue;
 	    }	  
 	  }
-
-	  if (fabs(ele.superCluster()->eta()) > 1.479) {
-	    if (deltaR(ele.eta(),ele.phi(), candidate.eta(), candidate.phi()) < 0.08) continue;
+	  
+	  if (fabs(ele.superCluster()->eta()) > 1.479) {	    
+	    if (deltaR(ele.eta(),ele.phi(), candidate.eta(), candidate.phi()) < 0.08) {
+	      continue;
+	    }
 	  }
 	  tmpPhotonPt += candidate.pt();
-	} else {
+	} else if (candidate.particleId() == reco::PFCandidate::h0) {
 	  tmpNeutralHadronPt += candidate.pt();
 	}
 	  
@@ -978,14 +997,18 @@ bool RazorTuplizer::fillPhotons(const edm::Event& iEvent, const edm::EventSetup&
     //Compute PF isolation
     //**********************************************************
     vector<double> tmpChargedHadronPt;
+    int bestVertexIndex = -1;
     for(unsigned int i = 0; i < vertices->size(); i++){
       if (isGoodPV(&(vertices->at(i)))) {
 	tmpChargedHadronPt.push_back(0);
       }
+      if (&(vertices->at(i)) == myPV) {
+	bestVertexIndex = i;
+      }      
     }
     double tmpPhotonPt = 0;
     double tmpNeutralHadronPt = 0;
- 
+
     // First, find photon direction with respect to the good PV
     TVector3 phoPos(pho.superCluster()->x(),pho.superCluster()->y(),pho.superCluster()->z());
    
@@ -1054,10 +1077,18 @@ bool RazorTuplizer::fillPhotons(const edm::Event& iEvent, const edm::EventSetup&
 
     }
 
-    pho_sumChargedHadronPt[nPhotons] = tmpChargedHadronPt[0];
+    pho_sumChargedHadronPt[nPhotons] = tmpChargedHadronPt[bestVertexIndex];
     pho_sumNeutralHadronEt[nPhotons] = tmpNeutralHadronPt;
     pho_sumPhotonEt[nPhotons] = tmpPhotonPt;
-    
+
+    pho_sumWorstVertexChargedHadronPt[nPhotons] = 0;
+    for (int v=0; v<int(tmpChargedHadronPt.size()); ++v) {
+      if (pho_sumWorstVertexChargedHadronPt[nPhotons] < tmpChargedHadronPt[v]) {
+	pho_sumWorstVertexChargedHadronPt[nPhotons] = tmpChargedHadronPt[v];
+      }
+    }
+
+
     std::pair<double,double> photonEnergyCorrections = photonEnergyCorrector.CorrectedEnergyWithErrorV3(pho, *vertices, *rhoAll, *ecalLazyTools, iSetup, false);
     pho_RegressionE[nPhotons] = photonEnergyCorrections.first;
     pho_RegressionEUncertainty[nPhotons] = photonEnergyCorrections.second;

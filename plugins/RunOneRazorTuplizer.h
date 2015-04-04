@@ -396,6 +396,7 @@ protected:
   float pho_sumChargedHadronPt[99];
   float pho_sumNeutralHadronEt[99];
   float pho_sumPhotonEt[99];
+  float pho_sumWorstVertexChargedHadronPt[99];
   bool  pho_isConversion[99];
   bool  pho_passEleVeto[99];
   float pho_RegressionE[99];
