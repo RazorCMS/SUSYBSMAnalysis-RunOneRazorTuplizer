@@ -11,7 +11,7 @@ Instructions for compiling in CMSSW
     cmsenv
     git clone git@github.com:RazorCMS/SUSYBSMAnalysis-RunOneRazorTuplizer SUSYBSMAnalysis/RunOneRazorTuplizer
     git clone https://github.com/RazorCMS/RunOneRazorTuplizer-RecoEgamma-EgammaTools.git RecoEgamma/EgammaTools
-    git clone https://github.com/latinos/UserCode-CMG-CMGTools-External.git CMGTools/External
+    git clone https://github.com/RazorCMS/RunOneRazorTuplizer-CMGTools-External.git CMGTools/External
     scram b -j 12
     
 Running the BASE ntuplizer
