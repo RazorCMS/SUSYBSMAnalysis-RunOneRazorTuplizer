@@ -448,6 +448,7 @@ protected:
   bool Flag_CSCTightHaloFilter;
   bool Flag_hcalLaserEventFilter;
   bool Flag_EcalDeadCellTriggerPrimitiveFilter;
+  bool Flag_EcalDeadCellBoundaryEnergyFilter;
   bool Flag_goodVertices;
   bool Flag_trackingFailureFilter;
   bool Flag_eeBadScFilter;
@@ -457,7 +458,11 @@ protected:
   bool Flag_trkPOG_toomanystripclus53X;
   bool Flag_trkPOG_logErrorTooManyClusters;
   bool Flag_METFilters;
- 
+
+  bool Flag_EcalDeadCellEvent;
+  bool Flag_IsNotDeadEcalCluster;
+  bool Flag_EcalDeadDR;
+  bool Flag_EcalBoundaryDR;
 
   //MC
   int nGenJets;

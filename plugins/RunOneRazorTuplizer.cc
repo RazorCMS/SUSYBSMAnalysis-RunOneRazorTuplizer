@@ -11,6 +11,7 @@
 #include "DataFormats/METReco/interface/BeamHaloSummary.h"
 #include <PhysicsTools/SelectorUtils/interface/JetIDSelectionFunctor.h>
 #include <PhysicsTools/SelectorUtils/interface/PFJetIDSelectionFunctor.h>
+#include "DataFormats/METReco/interface/AnomalousECALVariables.h"
 
 //------ Constructors and destructor ------//
 RazorTuplizer::RazorTuplizer(const edm::ParameterSet& iConfig): 
@@ -314,6 +315,7 @@ void RazorTuplizer::enableMetBranches(){
   RazorEvents->Branch("Flag_CSCTightHaloFilter", &Flag_CSCTightHaloFilter, "Flag_CSCTightHaloFilter/O");
   RazorEvents->Branch("Flag_hcalLaserEventFilter", &Flag_hcalLaserEventFilter, "Flag_hcalLaserEventFilter/O");
   RazorEvents->Branch("Flag_EcalDeadCellTriggerPrimitiveFilter", &Flag_EcalDeadCellTriggerPrimitiveFilter, "Flag_EcalDeadCellTriggerPrimitiveFilter/O");
+  RazorEvents->Branch("Flag_EcalDeadCellBoundaryEnergyFilter", &Flag_EcalDeadCellBoundaryEnergyFilter, "Flag_EcalDeadCellBoundaryEnergyFilter/O");
   RazorEvents->Branch("Flag_goodVertices", &Flag_goodVertices, "Flag_goodVertices/O");
   RazorEvents->Branch("Flag_trackingFailureFilter", &Flag_trackingFailureFilter, "Flag_trackingFailureFilter/O");
   RazorEvents->Branch("Flag_eeBadScFilter", &Flag_eeBadScFilter, "Flag_eeBadScFilter/O");
@@ -323,6 +325,10 @@ void RazorTuplizer::enableMetBranches(){
   RazorEvents->Branch("Flag_trkPOG_toomanystripclus53X", &Flag_trkPOG_toomanystripclus53X, "Flag_trkPOG_toomanystripclus53X/O");
   RazorEvents->Branch("Flag_trkPOG_logErrorTooManyClusters", &Flag_trkPOG_logErrorTooManyClusters, "Flag_trkPOG_logErrorTooManyClusters/O");
   RazorEvents->Branch("Flag_METFilters", &Flag_METFilters, "Flag_METFilters/O");  
+  RazorEvents->Branch("Flag_EcalDeadCellEvent", &Flag_EcalDeadCellEvent, "Flag_EcalDeadCellEvent/O");  
+  RazorEvents->Branch("Flag_IsNotDeadEcalCluster", &Flag_IsNotDeadEcalCluster, "Flag_IsNotDeadEcalCluster/O");  
+  RazorEvents->Branch("Flag_EcalDeadDR", &Flag_EcalDeadDR, "Flag_EcalDeadDR/O");  
+  RazorEvents->Branch("Flag_EcalBoundaryDR", &Flag_EcalBoundaryDR, "Flag_EcalBoundaryDR/O");  
 }
 
 void RazorTuplizer::enableRazorBranches(){
@@ -1196,32 +1202,21 @@ bool RazorTuplizer::fillMet(const edm::Event& iEvent){
   iEvent.getByLabel("BeamHaloSummary", beamHaloH);
   Flag_CSCTightHaloFilter = ! beamHaloH->CSCTightHaloId();
 
-  Flag_trkPOGFilters = true;
+  edm::Handle< bool > ecalDeadCellTriggerPrimitiveFilter;
+  iEvent.getByLabel("EcalDeadCellTriggerPrimitiveFilter", ecalDeadCellTriggerPrimitiveFilter);
+  Flag_EcalDeadCellTriggerPrimitiveFilter = bool(*ecalDeadCellTriggerPrimitiveFilter);
 
-  Flag_trkPOG_logErrorTooManyClusters = true;
-  
-  edm::Handle< int > ECALDeadDRFilter;
-  iEvent.getByLabel("simpleDRFlagProducer","deadCellStatus", ECALDeadDRFilter);
-  int ECALDeadDRFilterFlag = *ECALDeadDRFilter;
-  Flag_EcalDeadCellTriggerPrimitiveFilter = (ECALDeadDRFilterFlag>0) ? true : false;
-  //cout << "ECAL Dead: " << ECALDeadDRFilterFlag << "\n";
-
-  // edm::Handle< int > ECALBoundaryDRFilter;
-  // iEvent.getByLabel("simpleDRFlagProducer","boundaryStatus", ECALBoundaryDRFilter);
-  // int ECALBoundaryDRFilterFlag = *ECALBoundaryDRFilter;
-  //int drBoundary = (ECALBoundaryDRFilterFlag>0) ? 1 : 0;
+  edm::Handle< bool > ecalDeadCellBoundaryEnergyFilter;
+  iEvent.getByLabel("EcalDeadCellBoundaryEnergyFilter", ecalDeadCellBoundaryEnergyFilter);
+  Flag_EcalDeadCellBoundaryEnergyFilter = bool(*ecalDeadCellBoundaryEnergyFilter);
 
   edm::Handle< bool > ecalLaserCorrFilter;
   iEvent.getByLabel("ecalLaserCorrFilter", ecalLaserCorrFilter);
   Flag_ecalLaserCorrFilter = bool(*ecalLaserCorrFilter);
 
-  Flag_trkPOG_manystripclus53X = true;
-
   edm::Handle< bool > eeBadScFilter;
   iEvent.getByLabel("eeBadScFilter", eeBadScFilter);  
   Flag_eeBadScFilter = bool(*eeBadScFilter);
-
-  Flag_METFilters = true;
 
   edm::Handle< bool > HBHENoiseFilterResult;
   iEvent.getByLabel(edm::InputTag("HBHENoiseFilterResultProducer","HBHENoiseFilterResult"), HBHENoiseFilterResult);  
@@ -1231,21 +1226,79 @@ bool RazorTuplizer::fillMet(const edm::Event& iEvent){
   iEvent.getByLabel("hcalLaserEventFilter", hcalLaserEventFilter);   
   Flag_hcalLaserEventFilter = bool(*hcalLaserEventFilter);
 
-  //  edm::Handle< bool > ECALTPFilter;
-  //  iEvent.getByLabel("EcalDeadCellEventFlagProducer", ECALTPFilter);
-  //  bool ECALTPFilterFlag = *ECALTPFilter;
+  edm::Handle< bool > manystripclus53X;
+  iEvent.getByLabel("manystripclus53X", manystripclus53X);
+  Flag_trkPOG_manystripclus53X = *manystripclus53X;
+
+  edm::Handle< bool > toomanystripclus53X;
+  iEvent.getByLabel("toomanystripclus53X", toomanystripclus53X);
+  Flag_trkPOG_toomanystripclus53X = *toomanystripclus53X;
+
+  edm::Handle< bool > logErrorTooManyClusters;
+  iEvent.getByLabel("logErrorTooManyClusters", logErrorTooManyClusters);
+  Flag_trkPOG_logErrorTooManyClusters = *logErrorTooManyClusters;
+
+  Flag_trkPOGFilters = !(Flag_trkPOG_manystripclus53X) && 
+    !(Flag_trkPOG_toomanystripclus53X) &&
+    !(Flag_trkPOG_logErrorTooManyClusters);
+
+  Flag_METFilters = Flag_trackingFailureFilter && Flag_CSCTightHaloFilter && Flag_EcalDeadCellTriggerPrimitiveFilter
+    && Flag_ecalLaserCorrFilter && Flag_eeBadScFilter && Flag_HBHENoiseFilter && Flag_hcalLaserEventFilter
+    && Flag_trkPOGFilters;
+
+  cout << "MET Filters : " << iEvent.id().run() << " " << iEvent.id().event() << " "
+       << Flag_trackingFailureFilter << " "
+       << Flag_CSCTightHaloFilter << " "
+       << Flag_EcalDeadCellTriggerPrimitiveFilter << " "
+       << Flag_EcalDeadCellBoundaryEnergyFilter << " "
+       << Flag_ecalLaserCorrFilter << " " 
+       << Flag_eeBadScFilter << " "     
+       << Flag_HBHENoiseFilter << " "
+       << Flag_hcalLaserEventFilter << " "     
+       << Flag_trkPOG_manystripclus53X << " "
+       << Flag_trkPOG_toomanystripclus53X  << " " 
+       << Flag_trkPOG_logErrorTooManyClusters << " "
+       << Flag_trkPOGFilters  << " "
+       << Flag_METFilters << " "
+       << "\n";
+
+
+
+  //***************************************************************
+  //Special recipes ported from vecbos sequence
+  //Is not part of MET twiki recommendation now
+  //***************************************************************
+  edm::Handle< bool > EcalDeadCellEventFlag;
+  iEvent.getByLabel("EcalDeadCellEventFlagProducer", EcalDeadCellEventFlag);
+  Flag_EcalDeadCellEvent = *EcalDeadCellEventFlag;
   
-  // edm::InputTag ecalAnomalousFilterTag("EcalAnomalousEventFilter","anomalousECALVariables");
-  // Handle<AnomalousECALVariables> anomalousECALvarsHandle;
-  // iEvent.getByLabel(ecalAnomalousFilterTag, anomalousECALvarsHandle);
-  // AnomalousECALVariables anomalousECALvars;
-  // if (anomalousECALvarsHandle.isValid()) {
-  // anomalousECALvars = *anomalousECALvarsHandle;
-  // } else {
-  // edm::LogWarning("anomalous ECAL Vars not valid/found");
-  // }
-  // bool isNotDeadEcalCluster = !(anomalousECALvars.isDeadEcalCluster());
-  
+  edm::Handle<AnomalousECALVariables> anomalousECALvarsHandle;
+  edm::InputTag ecalAnomalousFilterTag("EcalAnomalousEventFilter","anomalousECALVariables");
+  iEvent.getByLabel(ecalAnomalousFilterTag, anomalousECALvarsHandle);
+  AnomalousECALVariables anomalousECALvars;
+  if (anomalousECALvarsHandle.isValid()) {
+  anomalousECALvars = *anomalousECALvarsHandle;
+  } else {
+  edm::LogWarning("anomalous ECAL Vars not valid/found");
+  }
+  Flag_IsNotDeadEcalCluster = !(anomalousECALvars.isDeadEcalCluster());
+
+  edm::Handle< int > ECALDeadDRFilter;
+  iEvent.getByLabel("simpleDRFlagProducer","deadCellStatus", ECALDeadDRFilter);
+  int ECALDeadDRFilterFlag = *ECALDeadDRFilter;
+  edm::Handle< int > ECALBoundaryDRFilter;
+  iEvent.getByLabel("simpleDRFlagProducer","boundaryStatus", ECALBoundaryDRFilter);
+  int ECALBoundaryDRFilterFlag = *ECALBoundaryDRFilter;
+  Flag_EcalDeadDR = (ECALDeadDRFilterFlag>0) ? true : false;
+  Flag_EcalBoundaryDR = (ECALBoundaryDRFilterFlag>0) ? true : false;
+
+  cout << "More: "
+       << Flag_EcalDeadCellEvent << " "
+       << Flag_IsNotDeadEcalCluster << " "
+       << Flag_EcalDeadDR << " "
+       << Flag_EcalBoundaryDR << " "
+       << "\n";
+
   return true;
 };
 
