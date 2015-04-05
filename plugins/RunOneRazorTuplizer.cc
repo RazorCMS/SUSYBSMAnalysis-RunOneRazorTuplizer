@@ -1246,24 +1246,6 @@ bool RazorTuplizer::fillMet(const edm::Event& iEvent){
     && Flag_ecalLaserCorrFilter && Flag_eeBadScFilter && Flag_HBHENoiseFilter && Flag_hcalLaserEventFilter
     && Flag_trkPOGFilters;
 
-  cout << "MET Filters : " << iEvent.id().run() << " " << iEvent.id().event() << " "
-       << Flag_trackingFailureFilter << " "
-       << Flag_CSCTightHaloFilter << " "
-       << Flag_EcalDeadCellTriggerPrimitiveFilter << " "
-       << Flag_EcalDeadCellBoundaryEnergyFilter << " "
-       << Flag_ecalLaserCorrFilter << " " 
-       << Flag_eeBadScFilter << " "     
-       << Flag_HBHENoiseFilter << " "
-       << Flag_hcalLaserEventFilter << " "     
-       << Flag_trkPOG_manystripclus53X << " "
-       << Flag_trkPOG_toomanystripclus53X  << " " 
-       << Flag_trkPOG_logErrorTooManyClusters << " "
-       << Flag_trkPOGFilters  << " "
-       << Flag_METFilters << " "
-       << "\n";
-
-
-
   //***************************************************************
   //Special recipes ported from vecbos sequence
   //Is not part of MET twiki recommendation now
@@ -1291,13 +1273,6 @@ bool RazorTuplizer::fillMet(const edm::Event& iEvent){
   int ECALBoundaryDRFilterFlag = *ECALBoundaryDRFilter;
   Flag_EcalDeadDR = (ECALDeadDRFilterFlag>0) ? true : false;
   Flag_EcalBoundaryDR = (ECALBoundaryDRFilterFlag>0) ? true : false;
-
-  cout << "More: "
-       << Flag_EcalDeadCellEvent << " "
-       << Flag_IsNotDeadEcalCluster << " "
-       << Flag_EcalDeadDR << " "
-       << Flag_EcalBoundaryDR << " "
-       << "\n";
 
   return true;
 };
