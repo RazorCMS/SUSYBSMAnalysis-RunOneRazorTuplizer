@@ -11,6 +11,7 @@
 #include "DataFormats/METReco/interface/BeamHaloSummary.h"
 #include <PhysicsTools/SelectorUtils/interface/JetIDSelectionFunctor.h>
 #include <PhysicsTools/SelectorUtils/interface/PFJetIDSelectionFunctor.h>
+#include "DataFormats/METReco/interface/AnomalousECALVariables.h"
 
 //------ Constructors and destructor ------//
 RazorTuplizer::RazorTuplizer(const edm::ParameterSet& iConfig): 
@@ -262,6 +263,7 @@ void RazorTuplizer::enablePhotonBranches(){
   RazorEvents->Branch("pho_sumChargedHadronPt", pho_sumChargedHadronPt, "pho_sumChargedHadronPt[nPhotons]/F");
   RazorEvents->Branch("pho_sumNeutralHadronEt", pho_sumNeutralHadronEt, "pho_sumNeutralHadronEt[nPhotons]/F");
   RazorEvents->Branch("pho_sumPhotonEt", pho_sumPhotonEt, "pho_sumPhotonEt[nPhotons]/F");
+  RazorEvents->Branch("pho_sumWorstVertexChargedHadronPt", pho_sumWorstVertexChargedHadronPt, "pho_sumWorstVertexChargedHadronPt[nPhotons]/F");
   RazorEvents->Branch("pho_isConversion", pho_isConversion, "pho_isConversion[nPhotons]/O");
   RazorEvents->Branch("pho_passEleVeto", pho_passEleVeto, "pho_passEleVeto[nPhotons]/O");
   RazorEvents->Branch("pho_RegressionE", pho_RegressionE, "pho_RegressionE[nPhotons]/F");
@@ -315,6 +317,7 @@ void RazorTuplizer::enableMetBranches(){
   RazorEvents->Branch("Flag_CSCTightHaloFilter", &Flag_CSCTightHaloFilter, "Flag_CSCTightHaloFilter/O");
   RazorEvents->Branch("Flag_hcalLaserEventFilter", &Flag_hcalLaserEventFilter, "Flag_hcalLaserEventFilter/O");
   RazorEvents->Branch("Flag_EcalDeadCellTriggerPrimitiveFilter", &Flag_EcalDeadCellTriggerPrimitiveFilter, "Flag_EcalDeadCellTriggerPrimitiveFilter/O");
+  RazorEvents->Branch("Flag_EcalDeadCellBoundaryEnergyFilter", &Flag_EcalDeadCellBoundaryEnergyFilter, "Flag_EcalDeadCellBoundaryEnergyFilter/O");
   RazorEvents->Branch("Flag_goodVertices", &Flag_goodVertices, "Flag_goodVertices/O");
   RazorEvents->Branch("Flag_trackingFailureFilter", &Flag_trackingFailureFilter, "Flag_trackingFailureFilter/O");
   RazorEvents->Branch("Flag_eeBadScFilter", &Flag_eeBadScFilter, "Flag_eeBadScFilter/O");
@@ -324,6 +327,10 @@ void RazorTuplizer::enableMetBranches(){
   RazorEvents->Branch("Flag_trkPOG_toomanystripclus53X", &Flag_trkPOG_toomanystripclus53X, "Flag_trkPOG_toomanystripclus53X/O");
   RazorEvents->Branch("Flag_trkPOG_logErrorTooManyClusters", &Flag_trkPOG_logErrorTooManyClusters, "Flag_trkPOG_logErrorTooManyClusters/O");
   RazorEvents->Branch("Flag_METFilters", &Flag_METFilters, "Flag_METFilters/O");  
+  RazorEvents->Branch("Flag_EcalDeadCellEvent", &Flag_EcalDeadCellEvent, "Flag_EcalDeadCellEvent/O");  
+  RazorEvents->Branch("Flag_IsNotDeadEcalCluster", &Flag_IsNotDeadEcalCluster, "Flag_IsNotDeadEcalCluster/O");  
+  RazorEvents->Branch("Flag_EcalDeadDR", &Flag_EcalDeadDR, "Flag_EcalDeadDR/O");  
+  RazorEvents->Branch("Flag_EcalBoundaryDR", &Flag_EcalBoundaryDR, "Flag_EcalBoundaryDR/O");  
 }
 
 void RazorTuplizer::enableRazorBranches(){
@@ -788,7 +795,7 @@ bool RazorTuplizer::fillElectrons(){
       if (tmpDR > 0.4) continue;
       
       //Determine if particle is PU or not
-      bool tmpIsPFNoPU = isPFNoPU(candidate, &(vertices->front()), vertices);
+      bool tmpIsPFNoPU = isPFNoPU(candidate, myPV, vertices);
 
       //don't include PF ele or PF mu
       if (candidate.particleId() == reco::PFCandidate::e || candidate.particleId() == reco::PFCandidate::mu ) {
@@ -796,25 +803,43 @@ bool RazorTuplizer::fillElectrons(){
       }
       
       if (!tmpIsPFNoPU) {
+
+	//in vecbos, the isolation sequence structure is such that 
+	//the veto below is also applied to pfPU particles.
+	//so we will also apply them.
+	if ( candidate.charge() != 0 &&
+	     fabs(ele.superCluster()->eta()) > 1.479 && tmpDR < 0.015
+	     ) {
+	  continue;
+	}
+
 	tmpPUPt += candidate.pt();
+
       } else {
 	if ( candidate.charge() != 0) {
-	  if (fabs(ele.superCluster()->eta()) > 1.479 && tmpDR < 0.015) continue;	 
+	  if (fabs(ele.superCluster()->eta()) > 1.479 && tmpDR < 0.015) {
+	    continue;	 
+	  }
 	  tmpChargedHadronPt += candidate.pt();
 	} else if ( candidate.particleId() == reco::PFCandidate::gamma ) {
 
 	  //veto PF photons that have the same supercluster as the electron
 	  if (candidate.superClusterRef().isNonnull() && ele.superCluster().isNonnull()) {
-	    if (&(*ele.superCluster()) == &(*candidate.superClusterRef())) {	      
+	    if ( ele.gsfTrack()->trackerExpectedHitsInner().numberOfHits()>0 
+		 && candidate.mva_nothing_gamma() > 0.99 
+		 && &(*ele.superCluster()) == &(*candidate.superClusterRef())
+		 ) {	      
 	      continue;
 	    }	  
 	  }
-
-	  if (fabs(ele.superCluster()->eta()) > 1.479) {
-	    if (deltaR(ele.eta(),ele.phi(), candidate.eta(), candidate.phi()) < 0.08) continue;
+	  
+	  if (fabs(ele.superCluster()->eta()) > 1.479) {	    
+	    if (deltaR(ele.eta(),ele.phi(), candidate.eta(), candidate.phi()) < 0.08) {
+	      continue;
+	    }
 	  }
 	  tmpPhotonPt += candidate.pt();
-	} else {
+	} else if (candidate.particleId() == reco::PFCandidate::h0) {
 	  tmpNeutralHadronPt += candidate.pt();
 	}
 	  
@@ -984,14 +1009,18 @@ bool RazorTuplizer::fillPhotons(const edm::Event& iEvent, const edm::EventSetup&
     //Compute PF isolation
     //**********************************************************
     vector<double> tmpChargedHadronPt;
+    int bestVertexIndex = -1;
     for(unsigned int i = 0; i < vertices->size(); i++){
       if (isGoodPV(&(vertices->at(i)))) {
 	tmpChargedHadronPt.push_back(0);
       }
+      if (&(vertices->at(i)) == myPV) {
+	bestVertexIndex = i;
+      }      
     }
     double tmpPhotonPt = 0;
     double tmpNeutralHadronPt = 0;
- 
+
     // First, find photon direction with respect to the good PV
     TVector3 phoPos(pho.superCluster()->x(),pho.superCluster()->y(),pho.superCluster()->z());
    
@@ -1060,10 +1089,18 @@ bool RazorTuplizer::fillPhotons(const edm::Event& iEvent, const edm::EventSetup&
 
     }
 
-    pho_sumChargedHadronPt[nPhotons] = tmpChargedHadronPt[0];
+    pho_sumChargedHadronPt[nPhotons] = tmpChargedHadronPt[bestVertexIndex];
     pho_sumNeutralHadronEt[nPhotons] = tmpNeutralHadronPt;
     pho_sumPhotonEt[nPhotons] = tmpPhotonPt;
-    
+
+    pho_sumWorstVertexChargedHadronPt[nPhotons] = 0;
+    for (int v=0; v<int(tmpChargedHadronPt.size()); ++v) {
+      if (pho_sumWorstVertexChargedHadronPt[nPhotons] < tmpChargedHadronPt[v]) {
+	pho_sumWorstVertexChargedHadronPt[nPhotons] = tmpChargedHadronPt[v];
+      }
+    }
+
+
     std::pair<double,double> photonEnergyCorrections = photonEnergyCorrector.CorrectedEnergyWithErrorV3(pho, *vertices, *rhoAll, *ecalLazyTools, iSetup, false);
     pho_RegressionE[nPhotons] = photonEnergyCorrections.first;
     pho_RegressionEUncertainty[nPhotons] = photonEnergyCorrections.second;
@@ -1172,32 +1209,21 @@ bool RazorTuplizer::fillMet(const edm::Event& iEvent){
   iEvent.getByLabel("BeamHaloSummary", beamHaloH);
   Flag_CSCTightHaloFilter = ! beamHaloH->CSCTightHaloId();
 
-  Flag_trkPOGFilters = true;
+  edm::Handle< bool > ecalDeadCellTriggerPrimitiveFilter;
+  iEvent.getByLabel("EcalDeadCellTriggerPrimitiveFilter", ecalDeadCellTriggerPrimitiveFilter);
+  Flag_EcalDeadCellTriggerPrimitiveFilter = bool(*ecalDeadCellTriggerPrimitiveFilter);
 
-  Flag_trkPOG_logErrorTooManyClusters = true;
-  
-  edm::Handle< int > ECALDeadDRFilter;
-  iEvent.getByLabel("simpleDRFlagProducer","deadCellStatus", ECALDeadDRFilter);
-  int ECALDeadDRFilterFlag = *ECALDeadDRFilter;
-  Flag_EcalDeadCellTriggerPrimitiveFilter = (ECALDeadDRFilterFlag>0) ? true : false;
-  //cout << "ECAL Dead: " << ECALDeadDRFilterFlag << "\n";
-
-  // edm::Handle< int > ECALBoundaryDRFilter;
-  // iEvent.getByLabel("simpleDRFlagProducer","boundaryStatus", ECALBoundaryDRFilter);
-  // int ECALBoundaryDRFilterFlag = *ECALBoundaryDRFilter;
-  //int drBoundary = (ECALBoundaryDRFilterFlag>0) ? 1 : 0;
+  edm::Handle< bool > ecalDeadCellBoundaryEnergyFilter;
+  iEvent.getByLabel("EcalDeadCellBoundaryEnergyFilter", ecalDeadCellBoundaryEnergyFilter);
+  Flag_EcalDeadCellBoundaryEnergyFilter = bool(*ecalDeadCellBoundaryEnergyFilter);
 
   edm::Handle< bool > ecalLaserCorrFilter;
   iEvent.getByLabel("ecalLaserCorrFilter", ecalLaserCorrFilter);
   Flag_ecalLaserCorrFilter = bool(*ecalLaserCorrFilter);
 
-  Flag_trkPOG_manystripclus53X = true;
-
   edm::Handle< bool > eeBadScFilter;
   iEvent.getByLabel("eeBadScFilter", eeBadScFilter);  
   Flag_eeBadScFilter = bool(*eeBadScFilter);
-
-  Flag_METFilters = true;
 
   edm::Handle< bool > HBHENoiseFilterResult;
   iEvent.getByLabel(edm::InputTag("HBHENoiseFilterResultProducer","HBHENoiseFilterResult"), HBHENoiseFilterResult);  
@@ -1207,21 +1233,54 @@ bool RazorTuplizer::fillMet(const edm::Event& iEvent){
   iEvent.getByLabel("hcalLaserEventFilter", hcalLaserEventFilter);   
   Flag_hcalLaserEventFilter = bool(*hcalLaserEventFilter);
 
-  //  edm::Handle< bool > ECALTPFilter;
-  //  iEvent.getByLabel("EcalDeadCellEventFlagProducer", ECALTPFilter);
-  //  bool ECALTPFilterFlag = *ECALTPFilter;
+  edm::Handle< bool > manystripclus53X;
+  iEvent.getByLabel("manystripclus53X", manystripclus53X);
+  Flag_trkPOG_manystripclus53X = *manystripclus53X;
+
+  edm::Handle< bool > toomanystripclus53X;
+  iEvent.getByLabel("toomanystripclus53X", toomanystripclus53X);
+  Flag_trkPOG_toomanystripclus53X = *toomanystripclus53X;
+
+  edm::Handle< bool > logErrorTooManyClusters;
+  iEvent.getByLabel("logErrorTooManyClusters", logErrorTooManyClusters);
+  Flag_trkPOG_logErrorTooManyClusters = *logErrorTooManyClusters;
+
+  Flag_trkPOGFilters = !(Flag_trkPOG_manystripclus53X) && 
+    !(Flag_trkPOG_toomanystripclus53X) &&
+    !(Flag_trkPOG_logErrorTooManyClusters);
+
+  Flag_METFilters = Flag_trackingFailureFilter && Flag_CSCTightHaloFilter && Flag_EcalDeadCellTriggerPrimitiveFilter
+    && Flag_ecalLaserCorrFilter && Flag_eeBadScFilter && Flag_HBHENoiseFilter && Flag_hcalLaserEventFilter
+    && Flag_trkPOGFilters;
+
+  //***************************************************************
+  //Special recipes ported from vecbos sequence
+  //Is not part of MET twiki recommendation now
+  //***************************************************************
+  edm::Handle< bool > EcalDeadCellEventFlag;
+  iEvent.getByLabel("EcalDeadCellEventFlagProducer", EcalDeadCellEventFlag);
+  Flag_EcalDeadCellEvent = *EcalDeadCellEventFlag;
   
-  // edm::InputTag ecalAnomalousFilterTag("EcalAnomalousEventFilter","anomalousECALVariables");
-  // Handle<AnomalousECALVariables> anomalousECALvarsHandle;
-  // iEvent.getByLabel(ecalAnomalousFilterTag, anomalousECALvarsHandle);
-  // AnomalousECALVariables anomalousECALvars;
-  // if (anomalousECALvarsHandle.isValid()) {
-  // anomalousECALvars = *anomalousECALvarsHandle;
-  // } else {
-  // edm::LogWarning("anomalous ECAL Vars not valid/found");
-  // }
-  // bool isNotDeadEcalCluster = !(anomalousECALvars.isDeadEcalCluster());
-  
+  edm::Handle<AnomalousECALVariables> anomalousECALvarsHandle;
+  edm::InputTag ecalAnomalousFilterTag("EcalAnomalousEventFilter","anomalousECALVariables");
+  iEvent.getByLabel(ecalAnomalousFilterTag, anomalousECALvarsHandle);
+  AnomalousECALVariables anomalousECALvars;
+  if (anomalousECALvarsHandle.isValid()) {
+  anomalousECALvars = *anomalousECALvarsHandle;
+  } else {
+  edm::LogWarning("anomalous ECAL Vars not valid/found");
+  }
+  Flag_IsNotDeadEcalCluster = !(anomalousECALvars.isDeadEcalCluster());
+
+  edm::Handle< int > ECALDeadDRFilter;
+  iEvent.getByLabel("simpleDRFlagProducer","deadCellStatus", ECALDeadDRFilter);
+  int ECALDeadDRFilterFlag = *ECALDeadDRFilter;
+  edm::Handle< int > ECALBoundaryDRFilter;
+  iEvent.getByLabel("simpleDRFlagProducer","boundaryStatus", ECALBoundaryDRFilter);
+  int ECALBoundaryDRFilterFlag = *ECALBoundaryDRFilter;
+  Flag_EcalDeadDR = (ECALDeadDRFilterFlag>0) ? true : false;
+  Flag_EcalBoundaryDR = (ECALBoundaryDRFilterFlag>0) ? true : false;
+
   return true;
 };
 

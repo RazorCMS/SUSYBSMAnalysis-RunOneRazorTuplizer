@@ -165,61 +165,122 @@ bool RazorTuplizer::isGoodPV( const reco::Vertex *v) {
 
 
 
+// **********************************************************
+// Old PFNoPU procedure
+// **********************************************************
+// bool RazorTuplizer::isPFNoPU( const reco::PFCandidate candidate,  const reco::Vertex *PV, edm::Handle<reco::VertexCollection> vertices) {
 
+//   bool tmpIsPFNoPU = true;
+//   if(candidate.particleId() == reco::PFCandidate::h) {
+//     if(candidate.trackRef().isNonnull() && PV &&
+//        PV->trackWeight(candidate.trackRef()) > 0) {
+//       tmpIsPFNoPU = true;
+//     } else { 
+      
+//       bool vertexFound = false;
+//       const reco::Vertex *closestVtx = 0;
+//       double dzmin = 10000;
+
+//       // loop over vertices
+//       for (reco::VertexCollection::const_iterator inV = vertices->begin(); 
+// 	   inV != vertices->end(); ++inV) {
+// 	if(candidate.trackRef().isNonnull() && 
+// 	   inV->trackWeight(candidate.trackRef()) > 0) {
+// 	  vertexFound = true;
+// 	  closestVtx = &(*inV);
+// 	  break;
+// 	}
+// 	double dz = fabs(candidate.vertex().z() - inV->z());
+// 	if(dz < dzmin) {
+// 	  closestVtx = &(*inV);
+// 	  dzmin = dz;
+// 	}            
+//       }
+
+//       bool fCheckClosestZVertex = true; //we use option 1
+//       if(fCheckClosestZVertex) {
+// 	// Fallback: if track is not associated with any vertex,
+// 	// associate it with the vertex closest in z
+// 	if(vertexFound || closestVtx != PV) {
+// 	  tmpIsPFNoPU = kFALSE;
+// 	} else {
+// 	  tmpIsPFNoPU = kTRUE;
+// 	}
+//       } else {
+// 	if(vertexFound && closestVtx != PV) {
+// 	  tmpIsPFNoPU = kFALSE;
+// 	} else {
+// 	  tmpIsPFNoPU = kTRUE;
+// 	}
+//       }
+//     } //charged hadron & trk stuff
+//   } else { // neutrals 
+//     //
+//     tmpIsPFNoPU = kTRUE;
+//   }
+
+//   return tmpIsPFNoPU;
+// }
+  
+// **********************************************************
+// PFNoPU procedure synchronized with the Vecbos sequence
+// **********************************************************
 bool RazorTuplizer::isPFNoPU( const reco::PFCandidate candidate,  const reco::Vertex *PV, edm::Handle<reco::VertexCollection> vertices) {
 
   bool tmpIsPFNoPU = true;
   if(candidate.particleId() == reco::PFCandidate::h) {
-    if(candidate.trackRef().isNonnull() && PV &&
-       PV->trackWeight(candidate.trackRef()) > 0) {
-      tmpIsPFNoPU = true;
-    } else { 
-      
-      bool vertexFound = false;
-      const reco::Vertex *closestVtx = 0;
-      double dzmin = 10000;
+   
+    bool vertexFound = false;
+    const reco::Vertex *closestVtx = 0;
+    double bestweight = -1;
+    double dzmin = 10000;
 
-      // loop over vertices
-      for (reco::VertexCollection::const_iterator inV = vertices->begin(); 
-	   inV != vertices->end(); ++inV) {
-	if(candidate.trackRef().isNonnull() && 
-	   inV->trackWeight(candidate.trackRef()) > 0) {
+    // loop over vertices and find the vertex with largest weight for given track
+    for (reco::VertexCollection::const_iterator inV = vertices->begin(); 
+	 inV != vertices->end(); ++inV) {
+      if(!isGoodPV(&(*inV))) continue;
+      if(candidate.trackRef().isNonnull()) {	  
+	double w = inV->trackWeight(candidate.trackRef());
+	if ( w > 0 && w > bestweight ) {
 	  vertexFound = true;
+	  bestweight = w;
 	  closestVtx = &(*inV);
 	  break;
 	}
-	double dz = fabs(candidate.vertex().z() - inV->z());
-	if(dz < dzmin) {
-	  closestVtx = &(*inV);
+      }
+    }
+    
+    //cout << "best weight: " << bestweight << " : " << vertexFound << " " << bool(closestVtx == PV) << "\n";
+    //fall back option is to find the vertex closest in z to the track
+    if (!vertexFound) {
+      for (reco::VertexCollection::const_iterator inV = vertices->begin(); 
+	   inV != vertices->end(); ++inV) {
+	if(!isGoodPV(&(*inV))) continue;
+	double dz = fabs( candidate.vertex().z() - inV->z() );
+	//cout << "dz " << candidate.vertex().z() << " " << inV->z() << " " << dz << "\n";
+	if (dz < dzmin) {
 	  dzmin = dz;
-	}            
-      }
-
-      bool fCheckClosestZVertex = true; //we use option 1
-      if(fCheckClosestZVertex) {
-	// Fallback: if track is not associated with any vertex,
-	// associate it with the vertex closest in z
-	if(vertexFound || closestVtx != PV) {
-	  tmpIsPFNoPU = kFALSE;
-	} else {
-	  tmpIsPFNoPU = kTRUE;
-	}
-      } else {
-	if(vertexFound && closestVtx != PV) {
-	  tmpIsPFNoPU = kFALSE;
-	} else {
-	  tmpIsPFNoPU = kTRUE;
+	  vertexFound = true;
+	  closestVtx = &(*inV);
 	}
       }
-    } //charged hadron & trk stuff
+      //cout << "fall back dz : " << dzmin << " " << vertexFound << " " << bool(closestVtx == PV) << "\n";
+    }
+    
+    if (!vertexFound || closestVtx == PV) {
+      tmpIsPFNoPU = true;
+    } else {
+      tmpIsPFNoPU = false;
+    }
   } else { // neutrals 
     //
-    tmpIsPFNoPU = kTRUE;
+    tmpIsPFNoPU = true;
   }
 
   return tmpIsPFNoPU;
 }
   
+
 
 
 
