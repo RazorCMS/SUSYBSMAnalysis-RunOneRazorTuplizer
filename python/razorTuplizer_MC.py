@@ -11,11 +11,12 @@ process.load("Configuration.EventContent.EventContent_cff")
 #load input files
 process.source = cms.Source("PoolSource",
     fileNames = cms.untracked.vstring(
-        '/store/mc/Summer12_DR53X/TTJets_MSDecays_central_TuneZ2star_8TeV-madgraph-tauola/AODSIM/PU_S10_START53_V19-v1/00000/00903D2F-3E44-E311-8AAB-00266CF9B274.root' #MC example file
+        '/store/mc/Summer12_DR53X/WH_ZH_HToGG_M-125_8TeV-pythia6/AODSIM/PU_RD1_START53_V7N-v3/00000/00021EA0-6B48-E411-AAC1-002590A370FE.root' #MC example file
         #'/store/data/Run2012D/SingleMu/AOD/22Jan2013-v1/30002/FEDB1808-B48A-E211-96A8-20CF3027A59B.root' #Data example file
     )
 )
 process.maxEvents = cms.untracked.PSet( input = cms.untracked.int32(1000) )
+process.MessageLogger.cerr.FwkReport.reportEvery = 100
 
 #TFileService for output 
 process.TFileService = cms.Service("TFileService", 

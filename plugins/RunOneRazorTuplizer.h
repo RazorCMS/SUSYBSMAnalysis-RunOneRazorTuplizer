@@ -420,6 +420,8 @@ protected:
   int   jetPileupIdFlag[99];
   bool  jetPassIDLoose[99];
   bool  jetPassIDTight[99];
+  bool  jetPassMuFrac[99];
+  bool  jetPassEleFrac[99];
   int   jetPartonFlavor[99];
   int   jetHadronFlavor[99];
 

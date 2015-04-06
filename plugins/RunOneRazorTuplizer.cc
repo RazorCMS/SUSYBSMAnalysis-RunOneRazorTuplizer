@@ -287,6 +287,8 @@ void RazorTuplizer::enableJetBranches(){
   RazorEvents->Branch("jetPileupIdFlag", jetPileupIdFlag, "jetPileupIdFlag[nJets]/I");
   RazorEvents->Branch("jetPassIDLoose", jetPassIDLoose, "jetPassIDLoose[nJets]/O");
   RazorEvents->Branch("jetPassIDTight", jetPassIDTight, "jetPassIDTight[nJets]/O");
+  RazorEvents->Branch("jetPassMuFrac", jetPassMuFrac, "jetPassMuFrac[nJets]/O");
+  RazorEvents->Branch("jetPassEleFrac", jetPassEleFrac, "jetPassEleFrac[nJets]/O");
   RazorEvents->Branch("jetPartonFlavor", jetPartonFlavor, "jetPartonFlavor[nJets]/I");
   RazorEvents->Branch("jetHadronFlavor", jetHadronFlavor, "jetHadronFlavor[nJets]/I");
 }
@@ -541,6 +543,10 @@ void RazorTuplizer::resetBranches(){
         jetPileupId[i] = -99.0;
         jetPartonFlavor[i] = 0;
         jetHadronFlavor[i] = 0;
+	jetPassIDLoose[i] = false;
+	jetPassIDTight[i] = false;
+	jetPassMuFrac[i] = false;
+	jetPassEleFrac[i] = false;
 
         //AK8 Jet
         fatJetE[i] = 0.0;
@@ -1106,7 +1112,6 @@ bool RazorTuplizer::fillJets(const edm::Event& iEvent){
     jetPt[nJets] = j->pt();
     jetEta[nJets] = j->eta();
     jetPhi[nJets] = j->phi(); 
-
     jetCSV[nJets] = (*(csvBJetTags.product()))[jetBaseRef];
     //jetCISV[nJets] = (*(cisvBJetTags.product()))[jetBaseRef];
     jetMass[nJets] = j->mass();
@@ -1119,6 +1124,8 @@ bool RazorTuplizer::fillJets(const edm::Event& iEvent){
     ret_tight.set(false);
     jetPassIDLoose[nJets] = jetIDLoose(*j, ret_loose);
     jetPassIDTight[nJets] = jetIDTight(*j, ret_loose);        
+    jetPassMuFrac[nJets]  = ( j->muonEnergyFraction() < 0.90 );
+    jetPassEleFrac[nJets]  = ( j->electronEnergyFraction() < 0.90 );
 
     if (useGen_) {
       jetPartonFlavor[nJets] = (*jetFlavorMatch)[edm::RefToBase<reco::Jet>(jetRef)].getFlavour();
