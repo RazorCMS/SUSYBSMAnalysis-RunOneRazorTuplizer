@@ -1161,7 +1161,7 @@ bool RazorTuplizer::fillJets(const edm::Event& iEvent){
     ret_tight.set(false);
     jetPassIDLoose[nJets] = jetIDLoose(*j, ret_loose);
     jetPassIDTight[nJets] = jetIDTight(*j, ret_loose);        
-    jetPassMuFrac[nJets]  = ( j->muonEnergyFraction() < 0.90 );
+    jetPassMuFrac[nJets]  = ( j->muonEnergyFraction() < 0.80 );
     jetPassEleFrac[nJets]  = ( j->electronEnergyFraction() < 0.90 );
 
     if (useGen_) {
