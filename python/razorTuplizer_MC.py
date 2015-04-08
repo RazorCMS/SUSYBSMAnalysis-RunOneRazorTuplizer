@@ -46,9 +46,6 @@ process.load('SUSYBSMAnalysis.RunOneRazorTuplizer.btagging_cff')
 #For MC jet matching
 process.load('SUSYBSMAnalysis.RunOneRazorTuplizer.jetflavorMatching_cff')
 
-# --- good vertex filter ---
-process.load("SUSYBSMAnalysis.RunOneRazorTuplizer.vertexFiltering_cff")
-
 #For MET Filters
 process.load("SUSYBSMAnalysis.RunOneRazorTuplizer.MetOptionalFilters_cff")
 
@@ -106,8 +103,7 @@ process.ntuples = cms.EDAnalyzer('RazorTuplizer',
 )
 
 #run
-process.p = cms.Path( process.goodPrimaryVertices*
-                      process.metOptionalFilterSequence*
+process.p = cms.Path( process.metOptionalFilterSequence*
                       process.myJetFlavourId*
                       process.newJetBtagging*
                       process.recoPuJetId*
