@@ -994,9 +994,12 @@ bool RazorTuplizer::fillPhotons(const edm::Event& iEvent, const edm::EventSetup&
     //if (pho.pt() < 20) continue;
 
     phoE[nPhotons] = pho.energy();
-    phoPt[nPhotons] = pho.pt();
-    phoEta[nPhotons] = pho.eta();
-    phoPhi[nPhotons] = pho.phi();
+    /*
+      Use Pt, Eta, and Phi are value corrected from the primary vertex position and energy regression
+    */
+    //phoPt[nPhotons] = pho.pt();
+    //phoEta[nPhotons] = pho.eta();
+    //phoPhi[nPhotons] = pho.phi();
     phoSigmaIetaIeta[nPhotons] = pho.sigmaIetaIeta();
     phoR9[nPhotons] = pho.r9();
 
@@ -1022,7 +1025,11 @@ bool RazorTuplizer::fillPhotons(const edm::Event& iEvent, const edm::EventSetup&
     double tmpNeutralHadronPt = 0;
 
     // First, find photon direction with respect to the good PV
-    TVector3 phoPos(pho.superCluster()->x(),pho.superCluster()->y(),pho.superCluster()->z());
+    /*
+      phoPos and vtxPos will be used with the Regresion Energy to get the corrected photon 4-momentum
+    */
+    TVector3 phoPos( pho.superCluster()->x(), pho.superCluster()->y(), pho.superCluster()->z() );
+    TVector3 vtxPos( pvX, pvY, pvZ );
    
     for (const reco::PFCandidate &candidate : *PFCands) {
 
@@ -1104,6 +1111,11 @@ bool RazorTuplizer::fillPhotons(const edm::Event& iEvent, const edm::EventSetup&
     std::pair<double,double> photonEnergyCorrections = photonEnergyCorrector.CorrectedEnergyWithErrorV3(pho, *vertices, *rhoAll, *ecalLazyTools, iSetup, false);
     pho_RegressionE[nPhotons] = photonEnergyCorrections.first;
     pho_RegressionEUncertainty[nPhotons] = photonEnergyCorrections.second;
+    //compute photon corrected 4-mometum 
+    TLorentzVector phoP4 = photonP4FromVtx( vtxPos, phoPos, pho_RegressionE[nPhotons] );
+    phoPt[nPhotons]  = phoP4.Pt();
+    phoEta[nPhotons] = phoP4.Eta();
+    phoPhi[nPhotons] = phoP4.Phi();
 
     pho_IDMVA[nPhotons] = pho.pfMVA();
     pho_superClusterEta[nPhotons] = pho.superCluster()->eta();

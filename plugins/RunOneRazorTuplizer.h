@@ -138,6 +138,9 @@ public:
 			    double r_iso_min = 0.05, double r_iso_max = 0.2 , double kt_scale = 10.0,
 			    bool use_pfweight = false, bool charged_only = false);  
   
+  //Get photon 4-momentum after primary vertex correction
+  TLorentzVector photonP4FromVtx( TVector3 vtx, TVector3 phoPos, double E );
+  
 protected:
   virtual void beginJob() override;
   virtual void analyze(const edm::Event&, const edm::EventSetup&) override;
