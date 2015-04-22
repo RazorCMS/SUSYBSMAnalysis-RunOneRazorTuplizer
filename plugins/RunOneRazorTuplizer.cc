@@ -528,6 +528,7 @@ void RazorTuplizer::resetBranches(){
         pho_sumChargedHadronPt[i] = -99.0;
         pho_sumNeutralHadronEt[i] = -99.0;
         pho_sumPhotonEt[i] = -99.0;
+	pho_sumWorstVertexChargedHadronPt[i] = -99.0;
         pho_isConversion[i] = false;
         pho_passEleVeto[i] = false;    
         pho_RegressionE[i] = -99.0;
@@ -593,6 +594,24 @@ void RazorTuplizer::resetBranches(){
     UncMETdpx = -99.0;
     UncMETdpy = -99.0;
     UncMETdSumEt = -99.0;
+    Flag_HBHENoiseFilter = false;
+    Flag_CSCTightHaloFilter = false;
+    Flag_hcalLaserEventFilter = false;
+    Flag_EcalDeadCellTriggerPrimitiveFilter = false;
+    Flag_EcalDeadCellBoundaryEnergyFilter = false;
+    Flag_goodVertices = false;
+    Flag_trackingFailureFilter = false;
+    Flag_eeBadScFilter = false;
+    Flag_ecalLaserCorrFilter = false;
+    Flag_trkPOGFilters = false;  
+    Flag_trkPOG_manystripclus53X = false;
+    Flag_trkPOG_toomanystripclus53X = false;
+    Flag_trkPOG_logErrorTooManyClusters = false;
+    Flag_METFilters = false;
+    Flag_EcalDeadCellEvent = false;
+    Flag_IsNotDeadEcalCluster = false;
+    Flag_EcalDeadDR = false;
+    Flag_EcalBoundaryDR = false;
 
     genMetPt = -999;
     genMetPhi = -999;
@@ -625,6 +644,11 @@ bool RazorTuplizer::fillEventInfo(const edm::Event& iEvent){
   lumiNum = iEvent.luminosityBlock();
   eventNum = iEvent.id().event();
   
+  if (vertices->empty()) {
+    std::cout << "Warning :  Event has no primary vertices\n";
+    return false; // skip the event if no PV found
+  }
+
   bool foundPV = false;
   myPV = 0;
 
@@ -735,6 +759,8 @@ bool RazorTuplizer::fillMuons(){
 
     nMuons++;
   }
+  
+  assert(nMuons < OBJECTARRAYSIZE);
 
   return true;
 };
@@ -857,13 +883,15 @@ bool RazorTuplizer::fillElectrons(){
 
     nElectrons++;
   }
-  
+
+  assert(nElectrons < OBJECTARRAYSIZE);
+
   return true;
 };
 
 bool RazorTuplizer::fillTaus(){
   // for (const pat::Tau &tau : *taus) {
-  //   if (tau.pt() < 20) continue;
+ //   if (tau.pt() < 20) continue;
   //   tauE[nTaus] = tau.energy();
   //   tauPt[nTaus] = tau.pt();
   //   tauEta[nTaus] = tau.eta();
@@ -923,8 +951,8 @@ bool RazorTuplizer::fillTaus(){
   //   }
       
   //   nTaus++;
-  // }
-
+  // 
+  //assert(nTaus < OBJECTARRAYSIZE);
   return true;
 };
 
@@ -982,6 +1010,9 @@ bool RazorTuplizer::fillIsoPFCandidates(){
       } // if candidate passes isolation
     }
   }
+
+  assert(nIsoPFCandidates < OBJECTARRAYSIZE);
+
   return true;
 }
 
@@ -1014,13 +1045,12 @@ bool RazorTuplizer::fillPhotons(const edm::Event& iEvent, const edm::EventSetup&
     vector<double> tmpChargedHadronPt;
     int bestVertexIndex = -1;
     for(unsigned int i = 0; i < vertices->size(); i++){
-      if (isGoodPV(&(vertices->at(i)))) {
-	tmpChargedHadronPt.push_back(0);
-      }
+      tmpChargedHadronPt.push_back(0);
       if (&(vertices->at(i)) == myPV) {
-	bestVertexIndex = i;
+    	bestVertexIndex = i;
       }      
     }
+
     double tmpPhotonPt = 0;
     double tmpNeutralHadronPt = 0;
 
@@ -1035,78 +1065,83 @@ bool RazorTuplizer::fillPhotons(const edm::Event& iEvent, const edm::EventSetup&
 
       //don't include PF ele or PF mu
       if (candidate.particleId() == reco::PFCandidate::e || candidate.particleId() == reco::PFCandidate::mu ) {
-	continue;
+    	continue;
       }
       
       if ( candidate.particleId() == reco::PFCandidate::h ) {
 	
-	for(unsigned int v = 0; v < vertices->size(); v++){
-	  if (!isGoodPV(&(vertices->at(v)))) continue;
-	  
-	  TVector3 vtxPos(vertices->at(v).x(),vertices->at(v).y(),vertices->at(v).z());
-	  TVector3 phoDirFromVtx = (phoPos-vtxPos).Unit();
-	  double tmpDR = 0.0;
-	  tmpDR = deltaR(phoDirFromVtx.Eta(), phoDirFromVtx.Phi(), candidate.eta(), candidate.phi());
+    	for(unsigned int v = 0; v < vertices->size(); v++){
+    	  if (!isGoodPV(&(vertices->at(v)))) continue;
 
-	  //dR cone
-	  if ( tmpDR > 0.3 ) continue;
+    	  TVector3 vtxPos(vertices->at(v).x(),vertices->at(v).y(),vertices->at(v).z());
+    	  TVector3 phoDirFromVtx = (phoPos-vtxPos).Unit();
+    	  double tmpDR = 0.0;
+    	  tmpDR = deltaR(phoDirFromVtx.Eta(), phoDirFromVtx.Phi(), candidate.eta(), candidate.phi());
+
+    	  //dR cone
+    	  if ( tmpDR > 0.3 ) continue;
 	 
-	  //dR veto
-	  if ( tmpDR < 0.02 ) continue;	 
+    	  //dR veto
+    	  if ( tmpDR < 0.02 ) continue;	 
 	  
-	  //dxy, dz to vertex 
-	  float dz = fabs(candidate.trackRef()->dz(vertices->at(v).position()));
-	  if (dz > 0.2) continue;  //vertex of this cand not compatible with this reco vtx
-	  float dxy = fabs(candidate.trackRef()->dxy(vertices->at(v).position()));
-	  if(fabs(dxy) > 0.1) continue;
+    	  //dxy, dz to vertex 
+    	  float dz = fabs(candidate.trackRef()->dz(vertices->at(v).position()));
+    	  if (dz > 0.2) continue;  //vertex of this cand not compatible with this reco vtx
+    	  float dxy = fabs(candidate.trackRef()->dxy(vertices->at(v).position()));
+    	  if(fabs(dxy) > 0.1) continue;
 	 
-	  tmpChargedHadronPt[v] += candidate.pt();
-	}
+	  assert(v < tmpChargedHadronPt.size()); //safe guard
+    	  tmpChargedHadronPt[v] += candidate.pt();
+    	}
     
       } else if ( candidate.particleId() == reco::PFCandidate::gamma ) {
 
-	TVector3 candVtx(candidate.vertex().x(),candidate.vertex().y(),candidate.vertex().z());
-	TVector3 phoDirFromCandVtx = phoPos-candVtx;
+    	TVector3 candVtx(candidate.vertex().x(),candidate.vertex().y(),candidate.vertex().z());
+    	TVector3 phoDirFromCandVtx = phoPos-candVtx;
 
-	//veto PF photons that have the same supercluster as the electron
-	if (candidate.superClusterRef().isNonnull() && pho.superCluster().isNonnull()) {
-	  if (&(*pho.superCluster()) == &(*candidate.superClusterRef())) {	      
-	    continue;
-	  }	  
-	}
+    	//veto PF photons that have the same supercluster as the electron
+    	if (candidate.superClusterRef().isNonnull() && pho.superCluster().isNonnull()) {
+    	  if (&(*pho.superCluster()) == &(*candidate.superClusterRef())) {	      
+    	    continue;
+    	  }	  
+    	}
 
-	double tmpDR = deltaR(phoDirFromCandVtx.Eta(), phoDirFromCandVtx.Phi(), candidate.eta(), candidate.phi());
-	if (tmpDR > 0.3) continue;
+    	double tmpDR = deltaR(phoDirFromCandVtx.Eta(), phoDirFromCandVtx.Phi(), candidate.eta(), candidate.phi());
+    	if (tmpDR > 0.3) continue;
 
-	if (fabs(pho.superCluster()->eta()) <= 1.479) {
-	  if ( fabs(phoDirFromCandVtx.Eta() - candidate.eta()) < 0.015) continue;
-	} else {
-	  if (tmpDR < 0.07 
-	      //< 0.00864*fabs(sinh(pho.superCluster()->eta()))*4  // eta dependent veto
-	      ) continue;
-	}
-	tmpPhotonPt += candidate.pt();
+    	if (fabs(pho.superCluster()->eta()) <= 1.479) {
+    	  if ( fabs(phoDirFromCandVtx.Eta() - candidate.eta()) < 0.015) continue;
+    	} else {
+    	  if (tmpDR < 0.07 
+    	      //< 0.00864*fabs(sinh(pho.superCluster()->eta()))*4  // eta dependent veto
+    	      ) continue;
+    	}
+    	tmpPhotonPt += candidate.pt();
       } else if ( candidate.particleId() == reco::PFCandidate::h0 )  {
-	TVector3 candVtx(candidate.vertex().x(),candidate.vertex().y(),candidate.vertex().z());
-	TVector3 phoDirFromCandVtx = phoPos-candVtx;
-	double tmpDR = deltaR(phoDirFromCandVtx.Eta(), phoDirFromCandVtx.Phi(), candidate.eta(), candidate.phi());
-	if (tmpDR > 0.3) continue;
-	tmpNeutralHadronPt += candidate.pt();
+    	TVector3 candVtx(candidate.vertex().x(),candidate.vertex().y(),candidate.vertex().z());
+    	TVector3 phoDirFromCandVtx = phoPos-candVtx;
+    	double tmpDR = deltaR(phoDirFromCandVtx.Eta(), phoDirFromCandVtx.Phi(), candidate.eta(), candidate.phi());
+    	if (tmpDR > 0.3) continue;
+    	tmpNeutralHadronPt += candidate.pt();
       }	  
 
     }
 
-    pho_sumChargedHadronPt[nPhotons] = tmpChargedHadronPt[bestVertexIndex];
+    if (bestVertexIndex >= 0) {
+      pho_sumChargedHadronPt[nPhotons] = tmpChargedHadronPt[bestVertexIndex];
+    } else  {
+      pho_sumChargedHadronPt[nPhotons] = -99.0;
+    }
     pho_sumNeutralHadronEt[nPhotons] = tmpNeutralHadronPt;
     pho_sumPhotonEt[nPhotons] = tmpPhotonPt;
 
     pho_sumWorstVertexChargedHadronPt[nPhotons] = 0;
     for (int v=0; v<int(tmpChargedHadronPt.size()); ++v) {
+      if (!isGoodPV(&(vertices->at(v)))) continue;
       if (pho_sumWorstVertexChargedHadronPt[nPhotons] < tmpChargedHadronPt[v]) {
-	pho_sumWorstVertexChargedHadronPt[nPhotons] = tmpChargedHadronPt[v];
+    	pho_sumWorstVertexChargedHadronPt[nPhotons] = tmpChargedHadronPt[v];
       }
     }
-
 
     std::pair<double,double> photonEnergyCorrections = photonEnergyCorrector.CorrectedEnergyWithErrorV3(pho, *vertices, *rhoAll, *ecalLazyTools, iSetup, false);
     pho_RegressionE[nPhotons] = photonEnergyCorrections.first;
@@ -1129,6 +1164,8 @@ bool RazorTuplizer::fillPhotons(const edm::Event& iEvent, const edm::EventSetup&
     */
     nPhotons++;
   }
+
+  assert(nPhotons < OBJECTARRAYSIZE);
 
   //delete lazyToolnoZS;
   return true;
@@ -1184,6 +1221,8 @@ bool RazorTuplizer::fillJets(const edm::Event& iEvent){
     nJets++;
   }
 
+  assert(nJets < OBJECTARRAYSIZE);
+
   return true;
 };
 
@@ -1201,6 +1240,7 @@ bool RazorTuplizer::fillJetsAK8(){
   //   fatJetTau3[nFatJets] =  (float) j.userFloat("NjettinessAK8:tau3");
   //   nFatJets++;
   // }
+  //assert(nFatJets < OBJECTARRAYSIZE);
 
   return true;
 };
@@ -1401,6 +1441,9 @@ bool RazorTuplizer::fillGenParticles(){
       gParticleMotherIndex[i] = -1;
     }
   }
+
+  assert(nGenParticle < GENPARTICLEARRAYSIZE);
+
   return true;
 };
 
@@ -1452,8 +1495,9 @@ bool RazorTuplizer::fillTrigger(const edm::Event& iEvent){
 
 void RazorTuplizer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup){
   using namespace edm;
-  
+
   //initialize
+  myPV = 0;
   resetBranches();
   loadEvent(iEvent); //loads objects and resets tree branches
   
@@ -1484,18 +1528,18 @@ void RazorTuplizer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSe
     ;
 
   bool isGoodMCEvent = true;
-  if (useGen_) {
-    isGoodMCEvent = fillMC()
-      && fillPileUp()
-      && fillGenParticles();
-  }
+  // if (useGen_) {
+  //   isGoodMCEvent = fillMC()
+  //     && fillPileUp()
+  //     && fillGenParticles();
+  // }
 
   isGoodEvent = isGoodEvent&&isGoodMCEvent;
   
   //NOTE: if any of the above functions return false, the event will be rejected immediately with no further processing
 
   if (enableTriggerInfo_) isGoodEvent = (isGoodEvent && fillTrigger(iEvent));
-  
+
   //fill the tree if the event wasn't rejected
   if(isGoodEvent) {
     RazorEvents->Fill();
