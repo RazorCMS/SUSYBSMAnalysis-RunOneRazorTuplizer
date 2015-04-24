@@ -15,7 +15,8 @@
 
 //------ Constructors and destructor ------//
 RazorTuplizer::RazorTuplizer(const edm::ParameterSet& iConfig): 
-    //get inputs from config file
+    //get inputs from config file  
+    isData_(iConfig.getParameter<bool> ("isData")),
     useGen_(iConfig.getParameter<bool> ("useGen")),
     enableTriggerInfo_(iConfig.getParameter<bool> ("enableTriggerInfo")),
     triggerPathNamesFile_(iConfig.getParameter<string> ("triggerPathNamesFile")),  
@@ -127,13 +128,14 @@ void RazorTuplizer::setBranches(){
   enableJetBranches();
   enableJetAK8Branches();
   enableMetBranches();
-  enableRazorBranches();
+  
   if (enableTriggerInfo_) enableTriggerBranches();
   enableMCBranches();
   enableGenParticleBranches();
 }
 
 void RazorTuplizer::enableEventInfoBranches(){
+  RazorEvents->Branch("isData", &isData, "isData/O");
   RazorEvents->Branch("nPV", &nPV, "nPV/I");
   RazorEvents->Branch("runNum", &runNum, "runNum/I");
   RazorEvents->Branch("lumiNum", &lumiNum, "lumiNum/I");
@@ -640,6 +642,7 @@ void RazorTuplizer::resetBranches(){
 
 bool RazorTuplizer::fillEventInfo(const edm::Event& iEvent){
   //store basic event info
+  isData = isData_;
   runNum = iEvent.id().run();
   lumiNum = iEvent.luminosityBlock();
   eventNum = iEvent.id().event();
@@ -755,7 +758,7 @@ bool RazorTuplizer::fillMuons(){
     muon_photonIso[nMuons] = mu.pfIsolationR04().sumPhotonEt;
     muon_neutralHadIso[nMuons] = mu.pfIsolationR04().sumNeutralHadronEt;
     muon_ptrel[nMuons] = getLeptonPtRel( jets, &mu );
-    muon_miniiso[nMuons] = getPFMiniIsolation(PFCands, dynamic_cast<const reco::Candidate *>(&mu), 0.05, 0.2, 10., false, false);
+    muon_miniiso[nMuons] = getPFMiniIsolation(PFCands, dynamic_cast<const reco::Candidate *>(&mu), myPV, vertices, 0.05, 0.2, 10., false, false);
 
     nMuons++;
   }
@@ -879,7 +882,7 @@ bool RazorTuplizer::fillElectrons(){
     //ele_RegressionE[nElectrons] = ele.ecalRegressionEnergy();
     //ele_CombineP4[nElectrons] = ele.ecalTrackRegressionEnergy();
     ele_ptrel[nElectrons] = getLeptonPtRel( jets, &ele );
-    ele_miniiso[nElectrons] = getPFMiniIsolation(PFCands, dynamic_cast<const reco::Candidate *>(&ele), 0.05, 0.2, 10., false, false);
+    ele_miniiso[nElectrons] = getPFMiniIsolation(PFCands, dynamic_cast<const reco::Candidate *>(&ele), myPV, vertices, 0.05, 0.2, 10., false, false);
 
     nElectrons++;
   }
