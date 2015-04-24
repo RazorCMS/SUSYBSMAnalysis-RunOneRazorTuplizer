@@ -1528,12 +1528,12 @@ void RazorTuplizer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSe
     ;
 
   bool isGoodMCEvent = true;
-  // if (useGen_) {
-  //   isGoodMCEvent = fillMC()
-  //     && fillPileUp()
-  //     && fillGenParticles();
-  // }
-
+  if (useGen_) {
+    isGoodMCEvent = fillMC()
+      && fillPileUp()
+      && fillGenParticles();
+  }
+  
   isGoodEvent = isGoodEvent&&isGoodMCEvent;
   
   //NOTE: if any of the above functions return false, the event will be rejected immediately with no further processing
