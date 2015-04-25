@@ -12,10 +12,13 @@ process.load("Configuration.EventContent.EventContent_cff")
 process.source = cms.Source("PoolSource",
     fileNames = cms.untracked.vstring(
         #'/store/mc/Summer12_DR53X/TTJets_MSDecays_central_TuneZ2star_8TeV-madgraph-tauola/AODSIM/PU_S10_START53_V19-v1/00000/00903D2F-3E44-E311-8AAB-00266CF9B274.root' #MC example file
-        '/store/data/Run2012A/Photon/AOD/22Jan2013-v1/20000/007A5A14-1069-E211-8BDD-0025905964B4.root' #Data example file
+        #'/store/data/Run2012A/Photon/AOD/22Jan2013-v1/20000/007A5A14-1069-E211-8BDD-0025905964B4.root' #Data example file
+        '/store/data/Run2012B/DoublePhoton/AOD/22Jan2013-v1/20000/0013EBD3-FA6C-E211-A1DF-00261894384A.root'
     )
 )
-process.maxEvents = cms.untracked.PSet( input = cms.untracked.int32(1000) )
+
+#process.maxEvents = cms.untracked.PSet( input = cms.untracked.int32(1000) )
+process.maxEvents = cms.untracked.PSet( input = cms.untracked.int32( 10000 ) )
 process.MessageLogger.cerr.FwkReport.reportEvery = 100
 #TFileService for output 
 process.TFileService = cms.Service("TFileService", 
