@@ -74,6 +74,7 @@ process.recoPuJetMva = puJetMva.clone(
 
 #list input collections
 process.ntuples = cms.EDAnalyzer('RazorTuplizer', 
+    isData = cms.bool(False),    
     useGen = cms.bool(True),
     enableTriggerInfo = cms.bool(True),                                 
     triggerPathNamesFile = cms.string("SUSYBSMAnalysis/RunOneRazorTuplizer/data/RunOneRazorHLTPathnames.dat"),

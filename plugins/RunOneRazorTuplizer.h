@@ -139,6 +139,8 @@ public:
 
   double getPFMiniIsolation(edm::Handle<reco::PFCandidateCollection> pfcands,
 			    const reco::Candidate* ptcl,
+			    const reco::Vertex *PV, 
+			    edm::Handle<reco::VertexCollection> vertices,
 			    double r_iso_min = 0.05, double r_iso_max = 0.2 , double kt_scale = 10.0,
 			    bool use_pfweight = false, bool charged_only = false);  
   
@@ -160,6 +162,7 @@ protected:
   //----- Member data ------//
 
   // Control Switches
+  bool    isData_;
   bool    useGen_;
   bool enableTriggerInfo_;
   
@@ -505,6 +508,7 @@ protected:
   float MR_AK8, RSQ_AK8;
   
   //event info
+  bool isData;
   int nPV;
   int runNum;
   int lumiNum;
