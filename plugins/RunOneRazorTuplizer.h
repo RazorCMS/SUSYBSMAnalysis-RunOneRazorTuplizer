@@ -261,6 +261,9 @@ protected:
   edm::Handle<reco::PFJetCollection> jetsAK8;
   edm::Handle<reco::GenMETCollection> genMets;
   edm::Handle<reco::PFMETCollection> mets;
+  edm::Handle<reco::PFMETCollection> type0Mets;
+  edm::Handle<reco::PFMETCollection> type0Plus1Mets;
+  edm::Handle<reco::PFMETCollection> type1Mets;
   edm::Handle<edm::View<reco::GenParticle> > genParticles;
   edm::Handle<reco::GenJetCollection> genJets;
   edm::Handle<LHEEventProduct> lheInfo;
@@ -453,6 +456,12 @@ protected:
   float metPt;
   float metPhi;
   float sumMET;
+  float metType0Pt;
+  float metType0Phi;
+  float metType1Pt;
+  float metType1Phi;
+  float metType0Plus1Pt;
+  float metType0Plus1Phi;
   float UncMETdpx;
   float UncMETdpy;
   float UncMETdSumEt;

@@ -315,6 +315,12 @@ void RazorTuplizer::enableMetBranches(){
   RazorEvents->Branch("metPt", &metPt, "metPt/F");
   RazorEvents->Branch("metPhi", &metPhi, "metPhi/F");
   RazorEvents->Branch("sumMET", &sumMET, "sumMET/F");
+  RazorEvents->Branch("metType0Pt", &metType0Pt, "metType0Pt/F");
+  RazorEvents->Branch("metType0Phi", &metType0Phi, "metType0Phi/F");
+  RazorEvents->Branch("metType1Pt", &metType1Pt, "metType1Pt/F");
+  RazorEvents->Branch("metType1Phi", &metType1Phi, "metType1Phi/F");
+  RazorEvents->Branch("metType0Plus1Pt", &metType0Plus1Pt, "metType0Plus1Pt/F");
+  RazorEvents->Branch("metType0Plus1Phi", &metType0Plus1Phi, "metType0Plus1Phi/F");
   RazorEvents->Branch("Flag_HBHENoiseFilter", &Flag_HBHENoiseFilter, "Flag_HBHENoiseFilter/O");
   RazorEvents->Branch("Flag_CSCTightHaloFilter", &Flag_CSCTightHaloFilter, "Flag_CSCTightHaloFilter/O");
   RazorEvents->Branch("Flag_hcalLaserEventFilter", &Flag_hcalLaserEventFilter, "Flag_hcalLaserEventFilter/O");
@@ -391,6 +397,9 @@ void RazorTuplizer::loadEvent(const edm::Event& iEvent){
   //iEvent.getByLabel(cisvBJetTagsSrcName, cisvBJetTags);
   iEvent.getByLabel(jetsAK8SrcName, jetsAK8);
   iEvent.getByLabel(metSrcName, mets);
+  iEvent.getByLabel("pfType0CorrectedMet", type0Mets);
+  iEvent.getByLabel("pfType0Plus1CorrectedMet", type0Plus1Mets);
+  iEvent.getByLabel("pfType1CorrectedMet", type1Mets);
   iEvent.getByLabel(edm::InputTag("kt6PFJets","rho"),rhoAll);
   iEvent.getByLabel(edm::InputTag("kt6PFJetsCentralChargedPileUp","rho"),rhoFastjetCentralChargedPileUp);
   iEvent.getByLabel(edm::InputTag("kt6PFJetsCentralNeutral","rho"),rhoFastjetCentralNeutral);
@@ -1254,6 +1263,16 @@ bool RazorTuplizer::fillMet(const edm::Event& iEvent){
   metPhi = Met.phi();
   sumMET = Met.sumEt();
   
+  const reco::PFMET &type0Met = type0Mets->front();
+  const reco::PFMET &type1Met = type1Mets->front();
+  const reco::PFMET &type0Plus1Met = type0Plus1Mets->front();
+  metType0Pt = type0Met.pt();
+  metType0Phi = type0Met.phi();
+  metType1Pt = type1Met.pt();
+  metType1Phi = type1Met.phi();
+  metType0Plus1Pt = type0Plus1Met.pt();
+  metType0Plus1Phi = type0Plus1Met.phi();
+
   edm::Handle< bool > trackerFailureFilter;
   iEvent.getByLabel("trackingFailureFilter", trackerFailureFilter);
   Flag_trackingFailureFilter = bool(*trackerFailureFilter);
