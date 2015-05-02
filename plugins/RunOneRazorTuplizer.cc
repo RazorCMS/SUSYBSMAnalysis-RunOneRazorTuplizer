@@ -1038,9 +1038,10 @@ bool RazorTuplizer::fillPhotons(const edm::Event& iEvent, const edm::EventSetup&
 
     phoE[nPhotons] = pho.energy();
     /*
-      Use Pt, Eta, and Phi are value corrected from the primary vertex position and energy regression
+      Eta, and Phi are value corrected from the primary vertex position and energy regression
+      Use Pt from the orignal photon 4-momentum
     */
-    //phoPt[nPhotons] = pho.pt();
+    phoPt[nPhotons] = pho.pt();
     //phoEta[nPhotons] = pho.eta();
     //phoPhi[nPhotons] = pho.phi();
     //phoSigmaIetaIeta[nPhotons] = pho.sigmaIetaIeta();
@@ -1161,7 +1162,7 @@ bool RazorTuplizer::fillPhotons(const edm::Event& iEvent, const edm::EventSetup&
     pho_RegressionEUncertainty[nPhotons] = photonEnergyCorrections.second;
     //compute photon corrected 4-mometum 
     TLorentzVector phoP4 = photonP4FromVtx( vtxPos, phoPos, pho_RegressionE[nPhotons] );
-    phoPt[nPhotons]  = phoP4.Pt();
+    //phoPt[nPhotons]  = phoP4.Pt();//saving original photon pt
     phoEta[nPhotons] = phoP4.Eta();
     phoPhi[nPhotons] = phoP4.Phi();
 
