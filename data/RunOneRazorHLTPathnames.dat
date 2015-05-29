@@ -87,3 +87,11 @@
 86      HLT_Photon36_R9Id_Photon22_CaloIdL_IsoVL 
 87      HLT_Photon36_R9Id_Photon22_R9Id
 88      HLT_Photon32_CaloIdL_Photon26_CaloIdL
+89      HLT_Jet60Eta1p7_Jet53Eta1p7_DiBTagIP3DFastPV
+90      HLT_Jet80Eta1p7_Jet70Eta1p7_DiBTagIP3DFastPV
+91     	HLT_DiPFJet80_DiPFJet30_BTagCSVd07d05
+92      HLT_DiPFJet80_DiPFJet30_BTagCSVd07d05d05
+93      HLT_DiPFJet80_DiPFJet30_BTagCSVd07d05d03
+94	HLT_DiJet80Eta2p6_BTagIP3DFastPVLoose
+95      HLT_QuadJet45
+96      HLT_QuadJet50
