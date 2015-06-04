@@ -199,6 +199,8 @@ void RazorTuplizer::enableElectronBranches(){
   RazorEvents->Branch("ele_HoverE", ele_HoverE, "ele_HoverE[nElectrons]/F");
   RazorEvents->Branch("ele_d0", ele_d0, "ele_d0[nElectrons]/F");
   RazorEvents->Branch("ele_dZ", ele_dZ, "ele_dZ[nElectrons]/F");
+  RazorEvents->Branch("ele_ip3d", ele_ip3d, "ele_ip3d[nElectrons]/F");
+  RazorEvents->Branch("ele_ip3dSignificance", ele_ip3dSignificance, "ele_ip3dSignificance[nElectrons]/F");
   RazorEvents->Branch("ele_pileupIso", ele_pileupIso, "ele_pileupIso[nElectrons]/F");
   RazorEvents->Branch("ele_chargedIso", ele_chargedIso, "ele_chargedIso[nElectrons]/F");
   RazorEvents->Branch("ele_photonIso", ele_photonIso, "ele_photonIso[nElectrons]/F");
@@ -478,6 +480,8 @@ void RazorTuplizer::resetBranches(){
         ele_HoverE[i] = -99;
         ele_d0[i] = -99;
         ele_dZ[i] = -99;
+	ele_ip3d[i] = -99;
+	ele_ip3dSignificance[i] = -99;
 	ele_pileupIso[i] = -99.0;
         ele_chargedIso[i] = -99.0;
         ele_photonIso[i] = -99.0;
@@ -795,7 +799,18 @@ bool RazorTuplizer::fillElectrons(){
     ele_HoverE[nElectrons] = ele.hcalOverEcal();
     ele_d0[nElectrons] = -ele.gsfTrack().get()->dxy(myPV->position());
     ele_dZ[nElectrons] = ele.gsfTrack().get()->dz(myPV->position());    
-   ele_MissHits[nElectrons] = ele.gsfTrack()->trackerExpectedHitsInner().numberOfHits();
+    ele_MissHits[nElectrons] = ele.gsfTrack()->trackerExpectedHitsInner().numberOfHits();
+
+    ele_ip3d[nElectrons] = 0;
+    ele_ip3dSignificance[nElectrons] = 0;
+    if (ele.gsfTrack().isNonnull()) {
+      const TransientTrackBuilder *transientTrackBuilder = transientTrackBuilderHandle.product();
+      const reco::TransientTrack &tt = transientTrackBuilder->build(ele.gsfTrack());
+      const std::pair<bool,Measurement1D> &ip3dpv =  
+	IPTools::signedImpactParameter3D(tt, GlobalVector(ele.gsfTrack()->px(),ele.gsfTrack()->py(),ele.gsfTrack()->pz()),*myPV);      
+      ele_ip3d[nElectrons] = ip3dpv.second.value();
+      ele_ip3dSignificance[nElectrons] = ip3dpv.second.value() / ip3dpv.second.error();
+    }
 
     //Conversion Veto
     ele_PassConvVeto[nElectrons] = false;
@@ -818,8 +833,6 @@ bool RazorTuplizer::fillElectrons(){
     //ID MVA
     ele_IDMVATrig[nElectrons] = myMVATrig->mvaValue(ele, *myPV, *transientTrackBuilderHandle.product(), *ecalLazyTools, false);
     ele_IDMVANonTrig[nElectrons] = myMVANonTrig->mvaValue(ele,*myPV, *transientTrackBuilderHandle.product(), *ecalLazyTools,false);
-
-
 
     double tmpPUPt = 0;
     double tmpChargedHadronPt = 0;
